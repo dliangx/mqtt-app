@@ -4,29 +4,7 @@
 set -e
 
 # Set npm registry for faster installation (default: Taobao mirror for China)
-# Available options: taobao, npmjs, tencent, huawei
-export NPM_REGISTRY_TYPE=${NPM_REGISTRY_TYPE:-"taobao"}
-
-case "$NPM_REGISTRY_TYPE" in
-    "taobao")
-        NPM_REGISTRY="https://registry.npmmirror.com"
-        ;;
-    "npmjs")
-        NPM_REGISTRY="https://registry.npmjs.org"
-        ;;
-    "tencent")
-        NPM_REGISTRY="https://mirrors.cloud.tencent.com/npm/"
-        ;;
-    "huawei")
-        NPM_REGISTRY="https://repo.huaweicloud.com/repository/npm/"
-        ;;
-    *)
-        echo "Error: Unknown registry type: $NPM_REGISTRY_TYPE"
-        echo "Available types: taobao, npmjs, tencent, huawei"
-        exit 1
-        ;;
-esac
-export NPM_REGISTRY
+export NPM_REGISTRY="https://registry.npmmirror.com"
 
 echo "Building React frontend..."
 cd frontend
@@ -67,9 +45,10 @@ cd ..
 
 echo "Moving frontend build to backend..."
 # Copy dist folder into backend, creating a backend/frontend/dist structure
+rm -rf backend/frontend/*
 mkdir -p backend/frontend
-if ! cp -r frontend/dist backend/frontend/dist; then
-    echo "Error: Failed to copy frontend build to backend"
+if ! mv frontend/dist backend/frontend/dist; then
+    echo "Error: Failed to mv frontend build to backend"
     exit 1
 fi
 
@@ -82,7 +61,3 @@ fi
 cd ..
 
 echo "Build complete! Run ./mqtt-app to start the server."
-echo "Frontend built with: $NPM_REGISTRY_TYPE registry ($NPM_REGISTRY)"
-
-# Optional: Restore original npm registry if needed
-# npm config set registry https://registry.npmjs.org/

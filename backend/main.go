@@ -19,6 +19,9 @@ var embeddedFrontend embed.FS
 func main() {
 	r := gin.Default()
 
+	// Add CORS middleware
+	r.Use(middleware.CORSMiddleware())
+
 	// Connect to database
 	database.ConnectDatabase()
 
@@ -40,6 +43,20 @@ func main() {
 			auth.GET("/devices", controllers.GetDevices)
 			auth.POST("/devices", controllers.CreateDevice)
 			auth.DELETE("/devices/:id", controllers.DeleteDevice)
+			auth.PUT("/devices/:id/location", controllers.UpdateDeviceLocation)
+			auth.PUT("/devices/:id/status", controllers.UpdateDeviceStatus)
+
+			// Alert routes
+			auth.GET("/alerts", controllers.GetAlerts)
+			auth.GET("/alerts/unread", controllers.GetUnreadAlerts)
+			auth.POST("/alerts", controllers.CreateAlert)
+			auth.PUT("/alerts/:id/read", controllers.MarkAlertAsRead)
+			auth.DELETE("/alerts/:id", controllers.DeleteAlert)
+
+			// Data push routes
+			auth.POST("/data/push", controllers.PushDeviceData)
+			auth.POST("/data/generate-test", controllers.GenerateTestData)
+			auth.POST("/data/push-test", controllers.PushTestData)
 
 			// WebSocket route
 			auth.GET("/ws", controllers.WsHandler)
