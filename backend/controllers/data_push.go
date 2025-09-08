@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 )
 
 type DeviceData struct {
-	DeviceID  uint            `json:"device_id"`
+	Name      string          `json:"name"`
+	Topic     string          `json:"topic"`
 	Longitude float64         `json:"longitude"`
 	Latitude  float64         `json:"latitude"`
 	Address   string          `json:"address"`
@@ -34,13 +36,12 @@ func PushDeviceData(c *gin.Context) {
 
 	// Verify device belongs to user
 	var device models.Device
-	if err := database.DB.Where("id = ? AND user_id = ?", input.DeviceID, userID).First(&device).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
-		return
-	}
 
 	// Update device location and status
 	if input.Longitude != 0 && input.Latitude != 0 {
+		device.UserID = userID
+		device.Name = input.Name
+		device.Topic = input.Topic
 		device.Longitude = input.Longitude
 		device.Latitude = input.Latitude
 		device.Address = input.Address
@@ -51,12 +52,15 @@ func PushDeviceData(c *gin.Context) {
 	}
 
 	device.LastSeen = time.Now().Unix()
-	database.DB.Save(&device)
+	if err := database.DB.Save(&device).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save device"})
+		return
+	}
 
-	// Publish to MQTT topic
-	topic := fmt.Sprintf("devices/%d/data", device.ID)
+	// Publish to MQTT topic using device's topic field
+	topic := device.Topic
 	data := map[string]interface{}{
-		"device_id":  device.ID,
+
 		"longitude":  input.Longitude,
 		"latitude":   input.Latitude,
 		"address":    input.Address,
@@ -85,29 +89,35 @@ func PushDeviceData(c *gin.Context) {
 }
 
 func GenerateTestData(c *gin.Context) {
-	userID := c.MustGet("userID").(uint)
-
-	// Get user's devices
-	var devices []models.Device
-	if err := database.DB.Where("user_id = ?", userID).Find(&devices).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get devices"})
-		return
-	}
-
-	if len(devices) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No devices found"})
-		return
-	}
 
 	// Generate test data for each device
 	testData := []DeviceData{}
-	for _, device := range devices {
-		// Generate random location around Beijing
-		longitude := 116.3974 + (float64(time.Now().UnixNano()%2000)-1000)/100000.0
-		latitude := 39.9093 + (float64(time.Now().UnixNano()%2000)-1000)/100000.0
+
+	// Generate random number of iterations (1-10)
+	rand.Seed(time.Now().UnixNano())
+	randomInt := rand.Intn(9) + 1
+
+	// 获取设备ID
+	var deviceID int
+	database.DB.Raw("SELECT seq FROM sqlite_sequence WHERE name = 'devices'").Row().Scan(&deviceID)
+
+	for i := 0; i < randomInt; i++ {
+		// 中国中心点（北京）的经纬度
+		baseLongitude := 116.3974
+		baseLatitude := 39.9093
+
+		// 生成随机偏移量，覆盖中国及其海面区域
+		// 经度范围：约 73°E 到 135°E (73-135)
+		// 纬度范围：约 3°N 到 54°N (3-54)
+		longitudeOffset := (float64(time.Now().UnixNano()%62000) - 31000) / 1000.0 // ±31度
+		latitudeOffset := (float64(time.Now().UnixNano()%51000) - 25500) / 1000.0  // ±25.5度
+
+		longitude := baseLongitude + longitudeOffset
+		latitude := baseLatitude + latitudeOffset
 
 		data := DeviceData{
-			DeviceID:  device.ID,
+			Name:      fmt.Sprintf("设备 %d", deviceID+i+1),
+			Topic:     fmt.Sprintf("device/%d", deviceID+i+1),
 			Longitude: longitude,
 			Latitude:  latitude,
 			Address:   fmt.Sprintf("测试地址 %d", time.Now().Unix()%1000),
@@ -126,63 +136,79 @@ func GenerateTestData(c *gin.Context) {
 
 func PushTestData(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
-
-	// Get user's devices
-	var devices []models.Device
-	if err := database.DB.Where("user_id = ?", userID).Find(&devices).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get devices"})
-		return
-	}
-
-	if len(devices) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No devices found"})
+	var input []DeviceData
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	results := []map[string]interface{}{}
-	for _, device := range devices {
-		// Generate random location around Beijing
-		longitude := 116.3974 + (float64(time.Now().UnixNano()%2000)-1000)/100000.0
-		latitude := 39.9093 + (float64(time.Now().UnixNano()%2000)-1000)/100000.0
 
-		data := DeviceData{
-			DeviceID:  device.ID,
-			Longitude: longitude,
-			Latitude:  latitude,
-			Address:   fmt.Sprintf("测试地址 %d", time.Now().Unix()%1000),
-			Status:    "online",
-			Data:      json.RawMessage(`{"temperature": 25.5, "humidity": 60, "battery": 85}`),
-			Timestamp: time.Now().Unix(),
+	for _, data := range input {
+		// Verify device belongs to user
+		var device models.Device
+
+		// Update device location and status
+		if data.Longitude != 0 && data.Latitude != 0 {
+			device.UserID = userID
+			device.Name = data.Name
+			device.Topic = data.Topic
+			device.Longitude = data.Longitude
+			device.Latitude = data.Latitude
+			device.Address = data.Address
 		}
 
-		// Update device
-		device.Longitude = longitude
-		device.Latitude = latitude
-		device.Address = data.Address
-		device.Status = "online"
+		if data.Status != "" {
+			device.Status = data.Status
+		}
+
 		device.LastSeen = time.Now().Unix()
-		database.DB.Save(&device)
-
-		// Publish to MQTT
-		topic := fmt.Sprintf("devices/%d/data", device.ID)
-		mqttData := map[string]interface{}{
-			"device_id": device.ID,
-			"longitude": longitude,
-			"latitude":  latitude,
-			"address":   data.Address,
-			"status":    "online",
-			"data":      data.Data,
-			"timestamp": time.Now().Unix(),
+		if err := database.DB.Save(&device).Error; err != nil {
+			results = append(results, map[string]interface{}{
+				"device_id": device.ID,
+				"status":    "error",
+				"error":     "Failed to save device",
+			})
+			continue
 		}
 
-		jsonData, _ := json.Marshal(mqttData)
-		mqtt.Publish(topic, jsonData)
+		// Publish to MQTT topic using device's topic field
+		topic := device.Topic
+		mqttData := map[string]interface{}{
+			"device_id":  device.ID,
+			"longitude":  data.Longitude,
+			"latitude":   data.Latitude,
+			"address":    data.Address,
+			"status":     data.Status,
+			"data":       data.Data,
+			"timestamp":  data.Timestamp,
+			"updated_at": time.Now().Unix(),
+		}
+
+		jsonData, err := json.Marshal(mqttData)
+		if err != nil {
+			results = append(results, map[string]interface{}{
+				"device_id": device.ID,
+				"status":    "error",
+				"error":     "Failed to marshal data",
+			})
+			continue
+		}
+
+		if err := mqtt.Publish(topic, jsonData); err != nil {
+			results = append(results, map[string]interface{}{
+				"device_id": device.ID,
+				"status":    "error",
+				"error":     "Failed to publish to MQTT",
+			})
+			continue
+		}
 
 		results = append(results, map[string]interface{}{
 			"device_id": device.ID,
 			"topic":     topic,
-			"longitude": longitude,
-			"latitude":  latitude,
+			"longitude": data.Longitude,
+			"latitude":  data.Latitude,
 			"status":    "success",
 		})
 	}
