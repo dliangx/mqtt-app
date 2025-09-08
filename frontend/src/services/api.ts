@@ -42,6 +42,10 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
+export interface GenerateTestDataResponse {
+  test_data: any[];
+}
+
 // Helper function to extract data from API response
 export const getResponseData = <T>(response: ApiResponse<T>): T | undefined => {
   return response.data;
@@ -113,9 +117,10 @@ export const apiService = {
     data?: any;
   }) => api.post<ApiResponse>("/data/push", data),
 
-  generateTestData: () => api.post<ApiResponse>("/data/generate-test"),
+  generateTestData: () =>
+    api.post<ApiResponse<GenerateTestDataResponse>>("/data/generate-test"),
 
-  pushTestData: () => api.post<ApiResponse>("/data/push-test"),
+  pushTestData: (data: any) => api.post<ApiResponse>("/data/push-test", data),
 };
 
 export { api };

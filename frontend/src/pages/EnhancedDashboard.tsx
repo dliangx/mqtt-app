@@ -72,6 +72,7 @@ const EnhancedDashboard: React.FC = () => {
     latitude: 0,
     address: "",
   });
+  const [testData, setTestData] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -137,9 +138,12 @@ const EnhancedDashboard: React.FC = () => {
 
   const handleGenerateTestData = async () => {
     try {
-      await apiService.generateTestData();
+      const response = await apiService.generateTestData();
+      // API响应结构是 { data: { test_data: [...] }, message: "..." }
+      const testDataArray = (response.data as any)?.test_data || [];
+      const testDataString = JSON.stringify(testDataArray, null, 2);
+      setTestData(testDataString);
       setSuccess("测试数据生成成功");
-      fetchDevices();
     } catch (err) {
       setError("生成测试数据失败");
       console.error("Failed to generate test data:", err);
@@ -148,7 +152,20 @@ const EnhancedDashboard: React.FC = () => {
 
   const handlePushTestData = async () => {
     try {
-      await apiService.pushTestData();
+      if (!testData.trim()) {
+        setError("请先生成测试数据");
+        return;
+      }
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(testData);
+      } catch (parseError) {
+        setError("测试数据格式错误，请检查JSON格式");
+        console.error("JSON parse error:", parseError);
+        return;
+      }
+      await apiService.pushTestData(parsedData);
       setSuccess("测试数据推送成功");
       fetchDevices();
     } catch (err) {
@@ -390,6 +407,23 @@ const EnhancedDashboard: React.FC = () => {
                   生成模拟的设备位置数据和传感器数据，用于测试地图显示和监控功能。
                 </Typography>
               </Box>
+            </Paper>
+          </Box>
+          <Box flex={1}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                测试数据编辑
+              </Typography>
+              <TextField
+                label="测试数据"
+                value={testData}
+                onChange={(e) => setTestData(e.target.value)}
+                multiline
+                rows={12}
+                fullWidth
+                variant="outlined"
+                placeholder="点击'生成测试数据'按钮生成数据，然后可以编辑或直接推送"
+              />
             </Paper>
           </Box>
           <Box flex={1}>
