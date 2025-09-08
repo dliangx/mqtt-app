@@ -172,15 +172,15 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
     return `
       <div style="
         background-color: ${color};
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
-        border: 2px solid white;
+        border: 1px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
+        font-size: 10px;
         color: white;
         font-weight: bold;
       ">
@@ -209,7 +209,6 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: "8px",
           overflow: "hidden",
         }}
       />
