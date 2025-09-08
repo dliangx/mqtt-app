@@ -1,31 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 
-// 调试函数：详细记录坐标验证过程
-const debugCoordinate = (device, context = "") => {
-  const lng = parseFloat(device.longitude);
-  const lat = parseFloat(device.latitude);
-
-  const debugInfo = {
-    context,
-    device: device.name,
-    originalLng: device.longitude,
-    originalLat: device.latitude,
-    typeLng: typeof device.longitude,
-    typeLat: typeof device.latitude,
-    parsedLng: lng,
-    parsedLat: lat,
-    isLngValid: !isNaN(lng) && isFinite(lng) && lng >= -180 && lng <= 180,
-    isLatValid: !isNaN(lat) && isFinite(lat) && lat >= -90 && lat <= 90,
-    isLngNaN: isNaN(lng),
-    isLatNaN: isNaN(lat),
-    isLngFinite: isFinite(lng),
-    isLatFinite: isFinite(lat),
-  };
-
-  console.log("Coordinate Debug:", debugInfo);
-  return debugInfo;
-};
-
 // 严格的坐标验证函数
 const isValidCoordinate = (value) => {
   if (value == null) return false;
@@ -59,15 +33,10 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
     const script = document.createElement("script");
     script.id = scriptId;
     script.src = `https://webapi.amap.com/maps?v=2.0&key=${
-      import.meta.env.VITE_AMAP_API_KEY || "YOUR_AMAP_API_KEY"
+      import.meta.env.VITE_AMAP_API_KEY
     }&plugin=AMap.MarkerClusterer`;
     script.async = true;
     script.onload = () => {
-      if (import.meta.env.VITE_AMAP_API_KEY === "YOUR_AMAP_API_KEY_HERE") {
-        console.warn("请配置高德地图API密钥在.env文件中");
-        setMapError("请配置高德地图API密钥");
-        return;
-      }
       initMap();
     };
     script.onerror = () => {
@@ -95,7 +64,7 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
         return;
       }
 
-      const map = new window.AMap.Map(mapRef.current, {
+      const map = new AMap.Map(mapRef.current, {
         zoom: 10,
         center: [116.397428, 39.90923],
         viewMode: "2D",
@@ -117,30 +86,20 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
       }
 
       console.log("Devices data:", devices);
-
       // 安全检查：确保devices是数组
       if (!Array.isArray(devices)) {
         console.error("Devices is not an array:", devices);
-        map.setCenter([116.397428, 39.90923]);
-        map.setZoom(10);
         return;
       }
 
       const validDevices = devices.filter((device) => {
-        // 详细的调试信息
-        const debugInfo = debugCoordinate(device, "filter-validation");
-
         // 使用严格的验证函数
         const isValid =
           isValidLongitude(device.longitude) &&
           isValidLatitude(device.latitude);
 
         if (!isValid) {
-          console.warn(
-            "Invalid coordinates for device:",
-            device.name,
-            debugInfo,
-          );
+          console.warn("Invalid coordinates for device:", device.name);
         }
 
         return isValid;
@@ -151,53 +110,39 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
         console.log(
           "No valid devices with coordinates found - using default Beijing location",
         );
-        // 设置默认的北京位置
-        map.setCenter([116.397428, 39.90923]);
-        map.setZoom(10);
+
         return;
       }
 
+      // 创建所有marker并收集到数组中
+      const markers = [];
       validDevices.forEach((device) => {
         // 使用安全的坐标获取方式
         const lng = parseFloat(device.longitude);
         const lat = parseFloat(device.latitude);
+        console.log(
+          "Coordinates for device:",
+          device.name,
+          ":",
+          lng,
+          lat,
+          "original:",
+          device.longitude,
+          device.latitude,
+        );
 
-        // 终极验证 - 防止任何NaN值
+        // 二次验证坐标有效性，防止parseFloat返回NaN
         if (!isValidLongitude(lng) || !isValidLatitude(lat)) {
-          const debugInfo = debugCoordinate(device, "emergency-validation");
-          console.error(
-            "EMERGENCY: Invalid coordinates detected - skipping device:",
-            debugInfo,
-          );
-          return; // 完全跳过这个设备
+          return;
         }
 
-        let marker;
-        try {
-          // 最终安全检查：确保坐标不是NaN
-          if (isNaN(lng) || isNaN(lat)) {
-            console.error(
-              "FINAL CHECK: NaN coordinates detected - aborting marker creation:",
-              {
-                device: device.name,
-                lng: lng,
-                lat: lat,
-                isLngNaN: isNaN(lng),
-                isLatNaN: isNaN(lat),
-              },
-            );
-            return;
-          }
-
-          marker = new window.AMap.Marker({
-            position: [lng, lat],
-            title: device.name,
-            content: createMarkerContent(device),
-            offset: new window.AMap.Pixel(-13, -30),
-          });
-        } catch (error) {
-          if (handleMapError(error, "createMarker")) return;
-        }
+        const marker = new AMap.Marker({
+          position: [lng, lat],
+          title: device.name,
+          content: createMarkerContent(device),
+          map: map,
+          offset: new AMap.Pixel(-13, -30),
+        });
 
         if (onMarkerClick && marker) {
           try {
@@ -210,69 +155,14 @@ const AMapComponent = ({ devices, onMarkerClick, height = "400px" }) => {
         }
 
         if (marker) {
-          try {
-            map.add(marker);
-          } catch (error) {
-            handleMapError(error, "mapAddMarker");
-          }
+          markers.push(marker);
         }
       });
-
-      if (validDevices.length === 1) {
-        const lng = parseFloat(validDevices[0].longitude);
-        const lat = parseFloat(validDevices[0].latitude);
-
-        // 使用验证函数确保坐标安全
-        if (isValidLongitude(lng) && isValidLatitude(lat)) {
-          try {
-            map.setCenter([lng, lat]);
-            map.setZoom(15);
-          } catch (error) {
-            if (!handleMapError(error, "setCenter")) {
-              // 如果设置中心失败，使用默认位置
-              map.setCenter([116.397428, 39.90923]);
-              map.setZoom(10);
-            }
-          }
-        } else {
-          console.error("Cannot center map - invalid coordinates:", lng, lat);
-          map.setCenter([116.397428, 39.90923]);
-          map.setZoom(10);
-        }
-      } else if (validDevices.length > 1) {
-        const bounds = new window.AMap.Bounds();
-        validDevices.forEach((device) => {
-          const lng = parseFloat(device.longitude);
-          const lat = parseFloat(device.latitude);
-
-          // 使用验证函数确保坐标安全
-          if (isValidLongitude(lng) && isValidLatitude(lat)) {
-            try {
-              bounds.extend([lng, lat]);
-            } catch (error) {
-              console.error("Error extending bounds:", error, lng, lat);
-            }
-          } else {
-            console.warn("Skipping invalid coordinates for bounds:", lng, lat);
-          }
-        });
-        try {
-          map.setBounds(bounds);
-        } catch (error) {
-          if (!handleMapError(error, "setBounds")) {
-            // 如果设置边界失败，使用默认位置
-            map.setCenter([116.397428, 39.90923]);
-            map.setZoom(10);
-          }
-        }
-      }
+      map.setFitView();
     } catch (error) {
       if (!handleMapError(error, "updateMarkers")) {
-        // 出错时也设置默认位置
-        if (map) {
-          map.setCenter([116.397428, 39.90923]);
-          map.setZoom(10);
-        }
+        // 出错时
+        console.error("Failed to update markers:", error);
       }
     }
   };
