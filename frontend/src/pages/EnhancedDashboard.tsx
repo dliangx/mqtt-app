@@ -29,6 +29,8 @@ import {
   PlayArrow as PlayArrowIcon,
 } from "@mui/icons-material";
 
+import AMapComponent from "../components/map/AMapComponent.jsx";
+
 import { apiService } from "../services/api";
 import type { Device, Alert as AlertType } from "../types";
 
@@ -73,9 +75,10 @@ const EnhancedDashboard: React.FC = () => {
     address: "",
   });
   const [testData, setTestData] = useState<string>("");
-
+  const setSelectedDevice = useState<Device | null>(null)[1];
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -93,7 +96,73 @@ const EnhancedDashboard: React.FC = () => {
   const fetchDevices = async () => {
     try {
       const response = await apiService.getDevices();
-      setDevices(Array.isArray(response) ? [...response] : []);
+      const devicesData = Array.isArray(response) ? [...response] : [];
+
+      // 转换后端数据格式为前端期望的格式
+      const transformedDevices = devicesData.map((device) => {
+        const transformedDevice = {
+          id: device.ID || device.id,
+          name: device.name,
+          topic: device.topic,
+          user_id: device.user_id,
+          longitude: device.longitude,
+          latitude: device.latitude,
+          address: device.address,
+          status: device.status as "online" | "offline" | "warning",
+          last_seen: device.last_seen,
+          created_at: device.CreatedAt || device.created_at,
+          updated_at: device.UpdatedAt || device.updated_at,
+        };
+
+        console.log("Device transformation:", {
+          original: {
+            ID: device.ID,
+            longitude: device.longitude,
+            latitude: device.latitude,
+          },
+          transformed: {
+            id: transformedDevice.id,
+            longitude: transformedDevice.longitude,
+            latitude: transformedDevice.latitude,
+          },
+          types: {
+            originalLng: typeof device.longitude,
+            originalLat: typeof device.latitude,
+            transformedLng: typeof transformedDevice.longitude,
+            transformedLat: typeof transformedDevice.latitude,
+          },
+          isValid:
+            !isNaN(Number(device.longitude)) && !isNaN(Number(device.latitude)),
+        });
+
+        return transformedDevice;
+      });
+
+      console.log("Fetched devices:", transformedDevices);
+      console.log(
+        "Device coordinates:",
+        transformedDevices.map((d) => ({
+          name: d.name,
+          longitude: d.longitude,
+          latitude: d.latitude,
+          type: typeof d.longitude + "/" + typeof d.latitude,
+        })),
+      );
+
+      // 检查转换后的坐标数据
+      const invalidDevices = transformedDevices.filter(
+        (device) =>
+          isNaN(Number(device.longitude)) ||
+          isNaN(Number(device.latitude)) ||
+          device.longitude == null ||
+          device.latitude == null,
+      );
+
+      if (invalidDevices.length > 0) {
+        console.error("Invalid coordinates found in devices:", invalidDevices);
+      }
+
+      setDevices(transformedDevices);
     } catch (err) {
       console.error("Failed to fetch devices:", err);
     }
@@ -140,7 +209,8 @@ const EnhancedDashboard: React.FC = () => {
     try {
       const response = await apiService.generateTestData();
       // API响应结构是 { data: { test_data: [...] }, message: "..." }
-      const testDataArray = (response.data as any)?.test_data || [];
+      const testDataArray =
+        (response.data as { test_data?: unknown[] })?.test_data || [];
       const testDataString = JSON.stringify(testDataArray, null, 2);
       setTestData(testDataString);
       setSuccess("测试数据生成成功");
@@ -183,6 +253,12 @@ const EnhancedDashboard: React.FC = () => {
   const handleAlertClick = (alert: AlertType) => {
     console.log("Alert clicked:", alert);
     // You can implement alert details modal here
+  };
+
+  const handleMarkerClick = (device: Device) => {
+    setSelectedDevice(device);
+    // 可以在这里实现设备详情弹窗或跳转到设备详情页面
+    console.log("Device marker clicked:", device);
   };
 
   if (loading) {
@@ -253,8 +329,11 @@ const EnhancedDashboard: React.FC = () => {
                   <RefreshIcon />
                 </IconButton>
               </Box>
-              {/* Map component removed */}
-              <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center"></div>
+              <AMapComponent
+                devices={devices}
+                onMarkerClick={handleMarkerClick}
+                height="400px"
+              />
             </Paper>
           </Box>
           <Box flex={1}>
@@ -409,6 +488,7 @@ const EnhancedDashboard: React.FC = () => {
               </Box>
             </Paper>
           </Box>
+
           <Box flex={1}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
@@ -424,31 +504,6 @@ const EnhancedDashboard: React.FC = () => {
                 variant="outlined"
                 placeholder="点击'生成测试数据'按钮生成数据，然后可以编辑或直接推送"
               />
-            </Paper>
-          </Box>
-          <Box flex={1}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                当前设备数据
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={1}>
-                {devices.map((device) => (
-                  <Card key={device.id} variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2">{device.name}</Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        状态: {device.status}
-                      </Typography>
-                      {device.longitude && device.latitude && (
-                        <Typography variant="body2" color="textSecondary">
-                          位置: {device.longitude.toFixed(6)},{" "}
-                          {device.latitude.toFixed(6)}
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </Box>
             </Paper>
           </Box>
         </Box>

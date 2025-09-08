@@ -103,8 +103,8 @@ func GenerateTestData(c *gin.Context) {
 
 	for i := 0; i < randomInt; i++ {
 		// 中国中心点（北京）的经纬度
-		baseLongitude := 116.3974
-		baseLatitude := 39.9093
+		baseLongitude := 116.397428
+		baseLatitude := 39.91923
 
 		// 生成随机偏移量，覆盖中国及其海面区域
 		// 经度范围：约 73°E 到 135°E (73-135)
