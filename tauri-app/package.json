@@ -1,0 +1,46 @@
+{
+  "name": "mqtt-tauri-app",
+  "version": "1.0.0",
+  "description": "MQTT监控管理桌面应用",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:android": "tauri android dev",
+    "tauri:ios": "tauri ios dev"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "@tauri-apps/api": "^2.0.0-alpha.0",
+    "axios": "^1.11.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2"
+  },
+  "keywords": [
+    "tauri",
+    "react",
+    "mqtt",
+    "desktop",
+    "mobile",
+    "monitoring"
+  ],
+  "author": "MQTT App Team",
+  "license": "MIT"
+}
