@@ -43,6 +43,9 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
   height = "400px",
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const prevDevicesJsonRef = useRef<string>("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState("");
 
@@ -75,6 +78,35 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
     };
   }, []);
 
+  // 当设备数据变化时更新地图标记
+  useEffect(() => {
+    if (mapLoaded && window.AMap && mapInstanceRef.current) {
+      // 只有在设备数据实际发生变化时才更新标记
+      const currentDevicesJson = JSON.stringify(devices);
+
+      if (currentDevicesJson !== prevDevicesJsonRef.current) {
+        prevDevicesJsonRef.current = currentDevicesJson;
+        updateMarkers(mapInstanceRef.current);
+      } else {
+        console.log("Devices data unchanged, skipping marker update");
+      }
+    }
+  }, [devices, mapLoaded]);
+
+  // 组件卸载时清理所有标记
+  useEffect(() => {
+    return () => {
+      if (markersRef.current.length > 0) {
+        markersRef.current.forEach((marker) => {
+          if (marker && marker.setMap) {
+            marker.setMap(null); // 从地图上移除标记
+          }
+        });
+        markersRef.current = []; // 清空标记引用数组
+      }
+    };
+  }, []);
+
   const initMap = () => {
     try {
       if (!mapRef.current) {
@@ -93,6 +125,7 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
         viewMode: "2D",
       });
 
+      mapInstanceRef.current = map;
       setMapLoaded(true);
       updateMarkers(map);
     } catch (error) {
@@ -103,12 +136,19 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
 
   const updateMarkers = (map: any) => {
     try {
+      // 首先清除所有现有的标记
+      markersRef.current.forEach((marker) => {
+        if (marker && marker.setMap) {
+          marker.setMap(null); // 从地图上移除标记
+        }
+      });
+      markersRef.current = []; // 清空标记引用数组
+
       if (!map || !devices.length) {
         console.log("No map or devices available");
         return;
       }
 
-      console.log("Devices data:", devices);
       // 安全检查：确保devices是数组
       if (!Array.isArray(devices)) {
         console.error("Devices is not an array:", devices);
@@ -142,16 +182,6 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
         // 使用安全的坐标获取方式
         const lng = parseFloat(device.longitude as unknown as string);
         const lat = parseFloat(device.latitude as unknown as string);
-        console.log(
-          "Coordinates for device:",
-          device.name,
-          ":",
-          lng,
-          lat,
-          "original:",
-          device.longitude,
-          device.latitude,
-        );
 
         // 二次验证坐标有效性，防止parseFloat返回NaN
         if (!isValidLongitude(lng) || !isValidLatitude(lat)) {
@@ -178,9 +208,18 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
 
         if (marker) {
           markers.push(marker);
+          markersRef.current.push(marker); // 存储标记引用
         }
       });
-      map.setFitView();
+
+      // 只有当有有效设备时才调整视图
+      if (markers.length > 0) {
+        // 设置合适的缩放级别来显示所有标记
+        map.setFitView(markers);
+      } else {
+        // 如果没有有效设备，重置到默认视图
+        map.setZoomAndCenter(10, [116.397428, 39.90923]);
+      }
     } catch (error) {
       if (!handleMapError(error, "updateMarkers")) {
         // 出错时
