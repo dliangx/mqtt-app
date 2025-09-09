@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const mapRef = useRef<any>(null);
 
   const handleMarkerClick = (device: Device) => {
     setSelectedDevice(device);
@@ -94,6 +95,7 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
     >
       {/* Map component with geofence and navigation features */}
       <AMapComponent
+        ref={mapRef}
         devices={devices}
         onMarkerClick={handleMarkerClick}
         onGeofenceViolation={handleGeofenceViolation}
@@ -170,9 +172,13 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
                   variant="outlined"
                   size="small"
                   onClick={() => {
-                    if (selectedDevice.longitude && selectedDevice.latitude) {
-                      const url = `https://uri.amap.com/navigation?to=${selectedDevice.longitude},${selectedDevice.latitude}&name=${encodeURIComponent(selectedDevice.name)}&callnative=1`;
-                      window.open(url, "_blank");
+                    if (
+                      selectedDevice.longitude &&
+                      selectedDevice.latitude &&
+                      mapRef.current
+                    ) {
+                      mapRef.current.navigateToDevice(selectedDevice);
+                      handleCloseDialog();
                     }
                   }}
                   disabled={
@@ -189,23 +195,6 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
           <Button onClick={handleCloseDialog}>关闭</Button>
         </DialogActions>
       </Dialog>
-
-      {/* Geofence Alert Snackbar */}
-      <Snackbar
-        open={alertOpen}
-        autoHideDuration={5000}
-        onClose={handleCloseAlert}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseAlert}
-          severity="warning"
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {alertMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
