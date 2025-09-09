@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -8,9 +8,12 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import AMapComponent from "../components/map/AMapComponent";
 import type { Device } from "../types";
+import type { GeofenceViolation } from "../utils/geofence";
 
 interface MonitorPageProps {
   devices: Device[];
@@ -21,6 +24,8 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
   const devices = useMemo(() => rawDevices, [JSON.stringify(rawDevices)]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
 
   const handleMarkerClick = (device: Device) => {
     setSelectedDevice(device);
@@ -30,6 +35,23 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedDevice(null);
+  };
+
+  const handleGeofenceViolation = useCallback(
+    (violation: GeofenceViolation) => {
+      setAlertMessage(violation.message);
+      setAlertOpen(true);
+
+      // 警报显示5秒后自动关闭
+      setTimeout(() => {
+        setAlertOpen(false);
+      }, 5000);
+    },
+    [],
+  );
+
+  const handleCloseAlert = () => {
+    setAlertOpen(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -70,10 +92,11 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
         m: 0,
       }}
     >
-      {/* Map component */}
+      {/* Map component with geofence and navigation features */}
       <AMapComponent
         devices={devices}
         onMarkerClick={handleMarkerClick}
+        onGeofenceViolation={handleGeofenceViolation}
         height="100%"
       />
 
@@ -141,6 +164,24 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
                   </Typography>
                 </>
               )}
+
+              <Box mt={2}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    if (selectedDevice.longitude && selectedDevice.latitude) {
+                      const url = `https://uri.amap.com/navigation?to=${selectedDevice.longitude},${selectedDevice.latitude}&name=${encodeURIComponent(selectedDevice.name)}&callnative=1`;
+                      window.open(url, "_blank");
+                    }
+                  }}
+                  disabled={
+                    !selectedDevice.longitude || !selectedDevice.latitude
+                  }
+                >
+                  导航到此位置
+                </Button>
+              </Box>
             </Box>
           )}
         </DialogContent>
@@ -148,6 +189,23 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
           <Button onClick={handleCloseDialog}>关闭</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Geofence Alert Snackbar */}
+      <Snackbar
+        open={alertOpen}
+        autoHideDuration={5000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseAlert}
+          severity="warning"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {alertMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

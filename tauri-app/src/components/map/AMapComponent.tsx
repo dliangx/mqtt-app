@@ -1,9 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+
 import type { Device } from "../../types";
+import {
+  Geofence,
+  GeofenceViolation,
+  checkGeofenceViolations,
+  generateId,
+  defaultGeofenceStyle,
+} from "../../utils/geofence";
+import GeofenceToolbar from "./GeofenceToolbar";
+import { apiService } from "../../services/api";
 
 interface AMapComponentProps {
   devices: Device[];
   onMarkerClick?: (device: Device) => void;
+  onGeofenceViolation?: (violation: GeofenceViolation) => void;
   height?: string;
 }
 
@@ -27,7 +38,7 @@ const isValidLatitude = (lat: unknown): boolean =>
 // 全局错误处理函数
 const handleMapError = (error: unknown, context = ""): boolean => {
   console.error("AMap Error:", context, error);
-  return false; // 返回false表示错误已处理
+  return false;
 };
 
 // 扩展 Window 接口以包含 AMap 类型
@@ -40,14 +51,22 @@ declare global {
 const AMapComponent: React.FC<AMapComponentProps> = ({
   devices,
   onMarkerClick,
+  onGeofenceViolation,
   height = "400px",
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const geofencePolygonsRef = useRef<any[]>([]);
+  const mouseToolRef = useRef<any>(null);
   const prevDevicesJsonRef = useRef<string>("");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState("");
+  const [geofences, setGeofences] = useState<Geofence[]>([]);
+  const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(
+    null,
+  );
+  const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
     const scriptId = "amap-script";
@@ -60,7 +79,7 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
     script.id = scriptId;
     script.src = `https://webapi.amap.com/maps?v=2.0&key=${
       import.meta.env.VITE_AMAP_API_KEY
-    }&plugin=AMap.MarkerClusterer`;
+    }&plugin=AMap.MarkerClusterer,AMap.MouseTool,AMap.Polygon,AMap.Circle`;
     script.async = true;
     script.onload = () => {
       initMap();
@@ -78,44 +97,56 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
     };
   }, []);
 
-  // 当设备数据变化时更新地图标记
+  // 当设备数据变化时更新地图标记和检查围栏违规
   useEffect(() => {
     if (mapLoaded && window.AMap && mapInstanceRef.current) {
-      // 只有在设备数据实际发生变化时才更新标记
       const currentDevicesJson = JSON.stringify(devices);
-
       if (currentDevicesJson !== prevDevicesJsonRef.current) {
         prevDevicesJsonRef.current = currentDevicesJson;
         updateMarkers(mapInstanceRef.current);
-      } else {
-        console.log("Devices data unchanged, skipping marker update");
       }
     }
-  }, [devices, mapLoaded]);
+  }, [devices, mapLoaded, geofences]);
 
-  // 组件卸载时清理所有标记
+  // 组件卸载时清理
   useEffect(() => {
     return () => {
-      if (markersRef.current.length > 0) {
-        markersRef.current.forEach((marker) => {
-          if (marker && marker.setMap) {
-            marker.setMap(null); // 从地图上移除标记
-          }
-        });
-        markersRef.current = []; // 清空标记引用数组
-      }
+      cleanupMap();
     };
   }, []);
 
+  const cleanupMap = () => {
+    if (markersRef.current.length > 0) {
+      markersRef.current.forEach((marker) => {
+        if (marker && marker.setMap) {
+          marker.setMap(null);
+        }
+      });
+      markersRef.current = [];
+    }
+
+    if (geofencePolygonsRef.current.length > 0) {
+      geofencePolygonsRef.current.forEach((polygon) => {
+        if (polygon && polygon.setMap) {
+          polygon.setMap(null);
+        }
+      });
+      geofencePolygonsRef.current = [];
+    }
+
+    if (mouseToolRef.current) {
+      try {
+        mouseToolRef.current.close(true);
+      } catch (error) {
+        console.error("Error closing mouse tool:", error);
+      }
+    }
+  };
+
   const initMap = () => {
     try {
-      if (!mapRef.current) {
-        console.error("Map container element not found");
-        return;
-      }
-
-      if (!window.AMap) {
-        console.error("AMap library not loaded");
+      if (!mapRef.current || !window.AMap) {
+        console.error("Map container or AMap library not available");
         return;
       }
 
@@ -125,68 +156,133 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
         viewMode: "2D",
       });
 
+      // 初始化鼠标工具
+      const mouseTool = new window.AMap.MouseTool(map);
+      mouseToolRef.current = mouseTool;
+
       mapInstanceRef.current = map;
       setMapLoaded(true);
       updateMarkers(map);
+
+      // 添加地图点击事件监听
+      map.on("click", handleMapClick);
     } catch (error) {
       console.error("Error initializing map:", error);
       setMapError("地图初始化失败");
     }
   };
 
+  const handleMapClick = (e: any) => {
+    // 只在绘制模式下处理点击事件
+    if (isDrawing && selectedGeofence) {
+      const point: [number, number] = [e.lnglat.getLng(), e.lnglat.getLat()];
+      const updatedGeofence = {
+        ...selectedGeofence,
+        coordinates: [...selectedGeofence.coordinates, point],
+      };
+      setSelectedGeofence(updatedGeofence);
+      handleGeofenceUpdate(updatedGeofence.id, updatedGeofence);
+    }
+  };
+
+  const startDrawing = () => {
+    if (!mapInstanceRef.current || !selectedGeofence || !isDrawing) {
+      // 如果条件不满足，确保绘制工具关闭
+      if (mouseToolRef.current) {
+        mouseToolRef.current.close(true);
+      }
+      return;
+    }
+
+    const mouseTool = mouseToolRef.current;
+    if (selectedGeofence.type === "polygon") {
+      mouseTool.polygon({
+        strokeColor:
+          selectedGeofence.strokeColor || defaultGeofenceStyle.strokeColor,
+        strokeOpacity: 1,
+        strokeWeight:
+          selectedGeofence.strokeWeight || defaultGeofenceStyle.strokeWeight,
+        fillColor: selectedGeofence.color || defaultGeofenceStyle.color,
+        fillOpacity: 0.4,
+      });
+    } else if (selectedGeofence.type === "circle" && selectedGeofence.radius) {
+      mouseTool.circle({
+        center: selectedGeofence.coordinates[0] || [116.397428, 39.90923],
+        radius: selectedGeofence.radius,
+        strokeColor:
+          selectedGeofence.strokeColor || defaultGeofenceStyle.strokeColor,
+        strokeOpacity: 1,
+        strokeWeight:
+          selectedGeofence.strokeWeight || defaultGeofenceStyle.strokeWeight,
+        fillColor: selectedGeofence.color || defaultGeofenceStyle.color,
+        fillOpacity: 0.4,
+      });
+    }
+
+    mouseTool.on("draw", (event: any) => {
+      // 双重检查绘制模式状态，确保只在激活状态下处理
+      if (!isDrawing) {
+        mouseTool.close(true);
+        return;
+      }
+
+      const obj = event.obj;
+      let coordinates: [number, number][] = [];
+
+      if (selectedGeofence.type === "polygon") {
+        coordinates = obj.getPath().map((point: any) => [point.lng, point.lat]);
+      } else if (selectedGeofence.type === "circle") {
+        const center = obj.getCenter();
+        coordinates = [[center.lng, center.lat]];
+      }
+
+      const updatedGeofence = {
+        ...selectedGeofence,
+        coordinates,
+      };
+
+      setSelectedGeofence(updatedGeofence);
+      handleGeofenceUpdate(updatedGeofence.id, updatedGeofence);
+
+      // 绘制完成后自动退出绘制模式并关闭工具
+      setIsDrawing(false);
+      mouseTool.close(true);
+    });
+
+    // 添加绘制取消监听
+    mouseTool.on("drawEnd", () => {
+      if (!isDrawing && mouseToolRef.current) {
+        mouseToolRef.current.close(true);
+      }
+    });
+  };
+
   const updateMarkers = (map: any) => {
     try {
-      // 首先清除所有现有的标记
+      // 清除现有标记
       markersRef.current.forEach((marker) => {
         if (marker && marker.setMap) {
-          marker.setMap(null); // 从地图上移除标记
+          marker.setMap(null);
         }
       });
-      markersRef.current = []; // 清空标记引用数组
+      markersRef.current = [];
 
-      if (!map || !devices.length) {
-        console.log("No map or devices available");
-        return;
-      }
+      if (!map || !devices.length) return;
 
-      // 安全检查：确保devices是数组
-      if (!Array.isArray(devices)) {
-        console.error("Devices is not an array:", devices);
-        return;
-      }
-
-      const validDevices = devices.filter((device) => {
-        // 使用严格的验证函数
-        const isValid =
+      const validDevices = devices.filter(
+        (device) =>
           isValidLongitude(device.longitude) &&
-          isValidLatitude(device.latitude);
+          isValidLatitude(device.latitude),
+      );
 
-        if (!isValid) {
-          console.warn("Invalid coordinates for device:", device.name);
-        }
+      if (validDevices.length === 0) return;
 
-        return isValid;
-      });
-      console.log("Valid devices with coordinates:", validDevices);
-
-      if (validDevices.length === 0) {
-        console.log(
-          "No valid devices with coordinates found - using default Beijing location",
-        );
-        return;
-      }
-
-      // 创建所有marker并收集到数组中
       const markers: any[] = [];
       validDevices.forEach((device) => {
-        // 使用安全的坐标获取方式
         const lng = parseFloat(device.longitude as unknown as string);
         const lat = parseFloat(device.latitude as unknown as string);
 
-        // 二次验证坐标有效性，防止parseFloat返回NaN
-        if (!isValidLongitude(lng) || !isValidLatitude(lat)) {
-          return;
-        }
+        if (!isValidLongitude(lng) || !isValidLatitude(lat)) return;
 
         const marker = new window.AMap.Marker({
           position: [lng, lat],
@@ -196,47 +292,69 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
           offset: new window.AMap.Pixel(-13, -30),
         });
 
-        if (onMarkerClick && marker) {
-          try {
-            marker.on("click", () => {
-              onMarkerClick(device);
-            });
-          } catch (error) {
-            handleMapError(error, "markerClick");
+        // 添加导航按钮
+        const navButton = createNavigationButton(device);
+        marker.on("click", () => {
+          if (onMarkerClick) {
+            onMarkerClick(device);
           }
-        }
+          // 显示导航按钮
+          map.add(navButton);
+          // 3秒后自动隐藏导航按钮
+          setTimeout(() => {
+            map.remove(navButton);
+          }, 3000);
+        });
 
-        if (marker) {
-          markers.push(marker);
-          markersRef.current.push(marker); // 存储标记引用
-        }
+        markers.push(marker);
+        markersRef.current.push(marker);
       });
 
-      // 只有当有有效设备时才调整视图
       if (markers.length > 0) {
-        // 设置合适的缩放级别来显示所有标记
         map.setFitView(markers);
-      } else {
-        // 如果没有有效设备，重置到默认视图
-        map.setZoomAndCenter(10, [116.397428, 39.90923]);
       }
     } catch (error) {
-      if (!handleMapError(error, "updateMarkers")) {
-        // 出错时
-        console.error("Failed to update markers:", error);
-      }
+      handleMapError(error, "updateMarkers");
     }
+  };
+
+  const createNavigationButton = (device: Device) => {
+    const position = [device.longitude, device.latitude];
+    const button = new window.AMap.Marker({
+      position: position,
+      offset: new window.AMap.Pixel(30, -30),
+      content: `
+        <div style="
+          background: white;
+          border-radius: 4px;
+          padding: 4px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          cursor: pointer;
+        ">
+          <div style="color: #1976d2; font-size: 16px;">🚗</div>
+        </div>
+      `,
+    });
+
+    button.on("click", () => {
+      // 打开导航到该位置
+      const url = `https://uri.amap.com/navigation?to=${device.longitude},${device.latitude}&name=${encodeURIComponent(device.name)}&callnative=1`;
+      window.open(url, "_blank");
+    });
+
+    return button;
   };
 
   const createMarkerContent = (device: Device): string => {
     const color = getStatusColor(device.status);
+
     return `
       <div style="
         background-color: ${color};
         width: 22px;
         height: 22px;
         border-radius: 50%;
-        border: 1px solid white;
+        border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
@@ -263,6 +381,178 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
     }
   };
 
+  const drawGeofences = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    // 清除现有围栏
+    geofencePolygonsRef.current.forEach((polygon) => {
+      if (polygon && polygon.setMap) {
+        polygon.setMap(null);
+      }
+    });
+    geofencePolygonsRef.current = [];
+
+    geofences.forEach((geofence) => {
+      if (geofence.coordinates.length === 0) return;
+
+      let polygon: any;
+
+      if (geofence.type === "polygon" && geofence.coordinates.length >= 3) {
+        polygon = new window.AMap.Polygon({
+          path: geofence.coordinates,
+          strokeColor: geofence.strokeColor || defaultGeofenceStyle.strokeColor,
+          strokeOpacity: 1,
+          strokeWeight:
+            geofence.strokeWeight || defaultGeofenceStyle.strokeWeight,
+          fillColor: geofence.color || defaultGeofenceStyle.color,
+          fillOpacity: 0.4,
+          zIndex: 50,
+        });
+      } else if (
+        geofence.type === "circle" &&
+        geofence.radius &&
+        geofence.coordinates.length > 0
+      ) {
+        polygon = new window.AMap.Circle({
+          center: geofence.coordinates[0],
+          radius: geofence.radius,
+          strokeColor: geofence.strokeColor || defaultGeofenceStyle.strokeColor,
+          strokeOpacity: 1,
+          strokeWeight:
+            geofence.strokeWeight || defaultGeofenceStyle.strokeWeight,
+          fillColor: geofence.color || defaultGeofenceStyle.color,
+          fillOpacity: 0.4,
+          zIndex: 50,
+        });
+      }
+
+      if (polygon) {
+        polygon.setMap(map);
+        geofencePolygonsRef.current.push(polygon);
+      }
+    });
+  };
+
+  const checkViolations = useCallback(async () => {
+    if (!geofences.length || !devices.length) {
+      return;
+    }
+
+    const validDevices = devices.filter(
+      (device) =>
+        isValidLongitude(device.longitude) && isValidLatitude(device.latitude),
+    );
+
+    const newViolations = checkGeofenceViolations(validDevices, geofences);
+
+    // 发送新的违规警报到服务器
+    for (const violation of newViolations) {
+      if (onGeofenceViolation) {
+        onGeofenceViolation(violation);
+      }
+
+      try {
+        await apiService.createAlert({
+          device_id: violation.deviceId,
+          type: "geofence_violation",
+          message: violation.message,
+          level: "warning",
+        });
+      } catch (error) {
+        console.error("Failed to create alert:", error);
+      }
+    }
+  }, [devices, geofences, onGeofenceViolation]);
+
+  const handleGeofenceCreate = (geofenceData: Omit<Geofence, "id">) => {
+    const newGeofence: Geofence = {
+      ...geofenceData,
+      id: generateId(),
+      coordinates: [],
+    };
+    setGeofences((prev) => [...prev, newGeofence]);
+    setSelectedGeofence(newGeofence);
+    setIsDrawing(true);
+  };
+
+  const handleGeofenceUpdate = (id: string, updates: Partial<Geofence>) => {
+    setGeofences((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+    );
+    if (selectedGeofence?.id === id) {
+      setSelectedGeofence((prev) => (prev ? { ...prev, ...updates } : null));
+    }
+    drawGeofences();
+  };
+
+  const handleGeofenceDelete = (id: string) => {
+    setGeofences((prev) => prev.filter((g) => g.id !== id));
+    if (selectedGeofence?.id === id) {
+      setSelectedGeofence(null);
+      setIsDrawing(false);
+    }
+    drawGeofences();
+  };
+
+  const handleGeofenceSelect = (geofence: Geofence | null) => {
+    setSelectedGeofence(geofence);
+    setIsDrawing(false);
+  };
+
+  const handleDrawingToggle = (drawing: boolean) => {
+    if (drawing && !selectedGeofence) {
+      // 如果没有选择围栏，先创建一个默认围栏
+      const newGeofence: Geofence = {
+        id: generateId(),
+        name: `围栏${geofences.length + 1}`,
+        type: "polygon",
+        coordinates: [],
+        ...defaultGeofenceStyle,
+      };
+      setGeofences((prev) => [...prev, newGeofence]);
+      setSelectedGeofence(newGeofence);
+    }
+    setIsDrawing(drawing);
+
+    if (drawing) {
+      startDrawing();
+    } else if (mouseToolRef.current) {
+      mouseToolRef.current.close(true);
+    }
+  };
+
+  useEffect(() => {
+    if (mapLoaded && mapInstanceRef.current) {
+      drawGeofences();
+    }
+  }, [geofences, mapLoaded]);
+
+  useEffect(() => {
+    if (isDrawing && mapLoaded) {
+      startDrawing();
+    } else if (mouseToolRef.current) {
+      // 当绘制模式关闭时，确保停止所有绘制工具
+      mouseToolRef.current.close(true);
+    }
+  }, [isDrawing, mapLoaded]);
+
+  // 监听绘制模式变化，确保绘制工具正确关闭
+  useEffect(() => {
+    if (!isDrawing && mouseToolRef.current) {
+      mouseToolRef.current.close(true);
+    }
+  }, [isDrawing]);
+
+  // 监听选择围栏变化，如果取消选择则退出绘制模式
+  useEffect(() => {
+    if (!selectedGeofence && isDrawing) {
+      setIsDrawing(false);
+      if (mouseToolRef.current) {
+        mouseToolRef.current.close(true);
+      }
+    }
+  }, [selectedGeofence, isDrawing]);
+
   return (
     <div style={{ position: "relative", height }}>
       <div
@@ -272,6 +562,18 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
           height: "100%",
           overflow: "hidden",
         }}
+      />
+
+      {/* 地理围栏工具栏 */}
+      <GeofenceToolbar
+        geofences={geofences}
+        onGeofenceCreate={handleGeofenceCreate}
+        onGeofenceUpdate={handleGeofenceUpdate}
+        onGeofenceDelete={handleGeofenceDelete}
+        onGeofenceSelect={handleGeofenceSelect}
+        selectedGeofence={selectedGeofence}
+        isDrawing={isDrawing}
+        onDrawingToggle={handleDrawingToggle}
       />
 
       {!mapLoaded && !mapError && (
@@ -321,60 +623,6 @@ const AMapComponent: React.FC<AMapComponentProps> = ({
           </small>
         </div>
       )}
-
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          backgroundColor: "white",
-          padding: "8px 12px",
-          borderRadius: "4px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          fontSize: "12px",
-        }}
-      >
-        <div
-          style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}
-        >
-          <div
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              backgroundColor: "#4caf50",
-              marginRight: "6px",
-            }}
-          ></div>
-          <span>在线</span>
-        </div>
-        <div
-          style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}
-        >
-          <div
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              backgroundColor: "#f44336",
-              marginRight: "6px",
-            }}
-          ></div>
-          <span>离线</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              backgroundColor: "#ff9800",
-              marginRight: "6px",
-            }}
-          ></div>
-          <span>警告</span>
-        </div>
-      </div>
     </div>
   );
 };
