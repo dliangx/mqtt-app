@@ -47,7 +47,7 @@ export const getResponseData = <T>(response: ApiResponse<T>): T | undefined => r
 export const apiService = {
   // Auth
   login: (credentials: { username: string; password: string }) =>
-    api.post<ApiResponse<{ token: string; user: any }>>('/login', credentials),
+    api.post<{ token: string; user: any }>('/login', credentials),
 
   register: (userData: { username: string; email: string; password: string }) =>
     api.post<ApiResponse>('/register', userData),
