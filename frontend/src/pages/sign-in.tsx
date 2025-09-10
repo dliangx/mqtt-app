@@ -44,9 +44,9 @@ export default function SignInPage() {
       if (tab === 0) {
         // Login
         const response = await apiService.login({ username, password });
-        if (response.data?.data?.token) {
-          localStorage.setItem('token', response.data.data.token);
-          localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        if (response.data?.token) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
           enqueueSnackbar('登录成功', { variant: 'success' });
           navigate('/');
         } else {

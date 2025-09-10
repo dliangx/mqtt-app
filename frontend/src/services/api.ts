@@ -25,7 +25,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: any) => response,
   (error: any) => {
-    if (error.response?.status === 401) {
+    if (
+      error.response?.status === 401 ||
+      (error.response?.status === 400 && error.response?.data?.error === 'Invalid token')
+    ) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/sign-in';
