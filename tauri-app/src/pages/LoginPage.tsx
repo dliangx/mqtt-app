@@ -20,17 +20,20 @@ const LoginPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTab(newValue);
     setError("");
+    setSuccessMessage("");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     try {
       if (tab === 0) {
@@ -42,11 +45,11 @@ const LoginPage: React.FC = () => {
         localStorage.setItem("token", token);
         const userInfo = { username, email: username + "@example.com" };
         localStorage.setItem("user", JSON.stringify(userInfo));
-        navigate("/");
+        window.location.href = "/";
       } else {
         // Register
         await apiService.register({ username, email, password });
-        setError("注册成功！请登录");
+        setSuccessMessage("注册成功！请登录");
         setTab(0);
         setUsername("");
         setPassword("");
@@ -86,13 +89,13 @@ const LoginPage: React.FC = () => {
           sx={{ mt: 2, width: "100%" }}
         >
           {error && (
-            <Alert
-              severity={
-                tab === 1 && error.includes("成功") ? "success" : "error"
-              }
-              sx={{ mb: 2 }}
-            >
+            <Alert severity="error" sx={{ mb: 2 }}>
               {error}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {successMessage}
             </Alert>
           )}
 

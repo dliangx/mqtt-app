@@ -25,7 +25,7 @@ interface ProfilePageProps {
   onLogout: () => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ onRefresh }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ onRefresh, onLogout }) => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = localStorage.getItem("token");
 
