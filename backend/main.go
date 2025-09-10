@@ -60,6 +60,12 @@ func main() {
 
 			// WebSocket route
 			auth.GET("/ws", controllers.WsHandler)
+
+			// User routes
+			auth.GET("/users", controllers.GetUsers)
+			auth.POST("/users", controllers.CreateUser)
+			auth.PUT("/users/:id", controllers.UpdateUser)
+			auth.DELETE("/users/:id", controllers.DeleteUser)
 		}
 	}
 

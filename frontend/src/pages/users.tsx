@@ -48,10 +48,6 @@ export default function UsersPage() {
     role: 'user',
   });
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -64,6 +60,11 @@ export default function UsersPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddUser = async () => {
     try {
