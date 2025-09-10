@@ -1,225 +1,361 @@
-import React, { useState, useEffect } from "react";
-import type { Alert } from "../../types";
-import { apiService } from "../../services/api";
+import type { Alert } from 'src/types';
+
+import React, { useState } from 'react';
+
+import {
+  Delete as DeleteIcon,
+  MoreVert as MoreIcon,
+  Visibility as ReadIcon,
+  FilterList as FilterIcon,
+} from '@mui/icons-material';
+import {
+  Box,
+  Chip,
+  Menu,
+  Table,
+  Tooltip,
+  Checkbox,
+  MenuItem,
+  TableRow,
+  TableBody,
+  TableCell,
+  TableHead,
+  IconButton,
+  Typography,
+  ListItemIcon,
+  ListItemText,
+  TableContainer,
+  TablePagination,
+} from '@mui/material';
+
+import { apiService } from 'src/services/api';
+
+import { Label } from 'src/components/label';
+import { useSnackbar } from 'src/components/snackbar';
+
+// ----------------------------------------------------------------------
 
 interface AlertListProps {
-  showUnreadOnly?: boolean;
-  maxItems?: number;
+  alerts: Alert[];
+  onRefresh: () => void;
   onAlertClick?: (alert: Alert) => void;
 }
 
-const AlertList: React.FC<AlertListProps> = ({
-  showUnreadOnly = false,
-  maxItems = 10,
-  onAlertClick,
-}) => {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+// ----------------------------------------------------------------------
 
-  useEffect(() => {
-    fetchAlerts();
-  }, [showUnreadOnly]);
-
-  const fetchAlerts = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.getAlerts();
-      let filteredAlerts = Array.isArray(response) ? [...response] : [];
-
-      if (showUnreadOnly) {
-        filteredAlerts = filteredAlerts.filter((alert) => !alert.read);
-      }
-
-      if (maxItems > 0) {
-        filteredAlerts = filteredAlerts.slice(0, maxItems);
-      }
-
-      setAlerts(filteredAlerts);
-    } catch (err) {
-      setError("获取报警信息失败");
-      console.error("Failed to fetch alerts:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const markAsRead = async (alertId: number) => {
-    try {
-      await apiService.markAlertAsRead(alertId);
-      setAlerts(
-        alerts.map((alert) =>
-          alert.id === alertId ? { ...alert, read: true } : alert,
-        ),
-      );
-    } catch (err) {
-      console.error("Failed to mark alert as read:", err);
-    }
-  };
-
-  const deleteAlert = async (alertId: number) => {
-    try {
-      await apiService.deleteAlert(alertId);
-      setAlerts(alerts.filter((alert) => alert.id !== alertId));
-    } catch (err) {
-      console.error("Failed to delete alert:", err);
-    }
-  };
-
-  const getAlertLevelColor = (level: string) => {
-    switch (level) {
-      case "critical":
-        return "bg-red-100 border-red-400 text-red-800";
-      case "high":
-        return "bg-orange-100 border-orange-400 text-orange-800";
-      case "medium":
-        return "bg-yellow-100 border-yellow-400 text-yellow-800";
-      case "low":
-        return "bg-blue-100 border-blue-400 text-blue-800";
-      default:
-        return "bg-gray-100 border-gray-400 text-gray-800";
-    }
-  };
-
-  const getAlertLevelText = (level: string) => {
-    switch (level) {
-      case "critical":
-        return "严重";
-      case "high":
-        return "高";
-      case "medium":
-        return "中";
-      case "low":
-        return "低";
-      default:
-        return level;
-    }
-  };
-
-  const getAlertTypeIcon = (type: string) => {
-    switch (type) {
-      case "emergency":
-        return "🚨";
-      case "warning":
-        return "⚠️";
-      case "info":
-        return "ℹ️";
-      default:
-        return "📋";
-    }
-  };
-
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString("zh-CN");
-  };
-
-  if (loading) {
-    return (
-      <div className="p-4">
-        <div className="animate-pulse space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-      </div>
-    );
+const getLevelColor = (level: Alert['level']) => {
+  switch (level) {
+    case 'critical':
+      return 'error';
+    case 'high':
+      return 'warning';
+    case 'medium':
+      return 'info';
+    case 'low':
+      return 'success';
+    default:
+      return 'default';
   }
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-600 bg-red-50 border border-red-200 rounded-lg">
-        {error}
-      </div>
-    );
-  }
-
-  if (alerts.length === 0) {
-    return (
-      <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-lg">
-        {showUnreadOnly ? "暂无未读报警" : "暂无报警信息"}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {alerts.map((alert) => (
-        <div
-          key={alert.id}
-          className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
-            alert.read ? "opacity-70" : "border-l-4"
-          } ${getAlertLevelColor(alert.level)}`}
-          onClick={() => onAlertClick?.(alert)}
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{getAlertTypeIcon(alert.type)}</span>
-                <span className="font-semibold">{alert.message}</span>
-                {!alert.read && (
-                  <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
-                    未读
-                  </span>
-                )}
-              </div>
-
-              <div className="text-sm text-gray-600 space-y-1">
-                <div>
-                  <span className="font-medium">级别: </span>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      alert.level === "critical"
-                        ? "bg-red-200"
-                        : alert.level === "high"
-                          ? "bg-orange-200"
-                          : alert.level === "medium"
-                            ? "bg-yellow-200"
-                            : "bg-blue-200"
-                    }`}
-                  >
-                    {getAlertLevelText(alert.level)}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium">时间: </span>
-                  {formatTimestamp(alert.timestamp)}
-                </div>
-                {alert.device && (
-                  <div>
-                    <span className="font-medium">设备: </span>
-                    {alert.device.name}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 ml-4">
-              {!alert.read && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    markAsRead(alert.id);
-                  }}
-                  className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  标记已读
-                </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteAlert(alert.id);
-                }}
-                className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 };
 
-export default AlertList;
+const formatTimestamp = (timestamp: number) =>
+  new Date(timestamp * 1000).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+// ----------------------------------------------------------------------
+
+export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertListProps) {
+  const { enqueueSnackbar } = useSnackbar();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [filterMenuAnchor, setFilterMenuAnchor] = useState<null | HTMLElement>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
+  const [filterLevel, setFilterLevel] = useState<Alert['level'] | 'all'>('all');
+  const [filterRead, setFilterRead] = useState<'all' | 'read' | 'unread'>('all');
+
+  const filteredAlerts = alerts.filter((alert) => {
+    if (filterLevel !== 'all' && alert.level !== filterLevel) return false;
+    if (filterRead === 'read' && !alert.read) return false;
+    if (filterRead === 'unread' && alert.read) return false;
+    return true;
+  });
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      const newSelected = filteredAlerts.map((alert) => alert.id);
+      setSelected(newSelected);
+      return;
+    }
+    setSelected([]);
+  };
+
+  const handleClick = (event: React.MouseEvent, id: number) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected: number[] = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1)
+      );
+    }
+    setSelected(newSelected);
+  };
+
+  const handleMarkAsRead = async (alertIds: number[]) => {
+    try {
+      await apiService.markAlertsAsRead(alertIds);
+      enqueueSnackbar('报警已标记为已读', { variant: 'success' });
+      onRefresh();
+      setSelected([]);
+    } catch (err) {
+      console.error('Failed to mark alerts as read:', err);
+      enqueueSnackbar('标记报警为已读失败', { variant: 'error' });
+    }
+  };
+
+  const handleDeleteAlerts = async (alertIds: number[]) => {
+    try {
+      await apiService.deleteAlerts(alertIds);
+      enqueueSnackbar('报警已删除', { variant: 'success' });
+      onRefresh();
+      setSelected([]);
+    } catch (err) {
+      console.error('Failed to delete alerts:', err);
+      enqueueSnackbar('删除报警失败', { variant: 'error' });
+    }
+  };
+
+  const isSelected = (id: number) => selected.indexOf(id) !== -1;
+
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredAlerts.length) : 0;
+
+  const paginatedAlerts = filteredAlerts.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  return (
+    <Box>
+      {/* Filter and Action Bar */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="筛选">
+            <IconButton size="small" onClick={(event) => setFilterMenuAnchor(event.currentTarget)}>
+              <FilterIcon />
+            </IconButton>
+          </Tooltip>
+          <Chip
+            label={`等级: ${filterLevel === 'all' ? '全部' : filterLevel}`}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            label={`状态: ${
+              filterRead === 'all' ? '全部' : filterRead === 'read' ? '已读' : '未读'
+            }`}
+            size="small"
+            variant="outlined"
+          />
+        </Box>
+
+        {selected.length > 0 && (
+          <Box display="flex" gap={1}>
+            <Tooltip title="标记为已读">
+              <IconButton size="small" onClick={() => handleMarkAsRead(selected)} color="primary">
+                <ReadIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="删除">
+              <IconButton size="small" onClick={() => handleDeleteAlerts(selected)} color="error">
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="更多操作">
+              <IconButton
+                size="small"
+                onClick={(event) => setActionMenuAnchor(event.currentTarget)}
+              >
+                <MoreIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+      </Box>
+
+      {/* Table */}
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  indeterminate={selected.length > 0 && selected.length < filteredAlerts.length}
+                  checked={filteredAlerts.length > 0 && selected.length === filteredAlerts.length}
+                  onChange={handleSelectAllClick}
+                />
+              </TableCell>
+              <TableCell>设备</TableCell>
+              <TableCell>报警类型</TableCell>
+              <TableCell>消息</TableCell>
+              <TableCell>等级</TableCell>
+              <TableCell>状态</TableCell>
+              <TableCell>时间</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedAlerts.map((alert) => {
+              const isItemSelected = isSelected(alert.id);
+              return (
+                <TableRow
+                  key={alert.id}
+                  hover
+                  onClick={(event) => {
+                    handleClick(event, alert.id);
+                    onAlertClick?.(alert);
+                  }}
+                  selected={isItemSelected}
+                  sx={{ cursor: 'pointer' }}
+                >
+                  <TableCell padding="checkbox">
+                    <Checkbox checked={isItemSelected} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {alert.device?.name || `设备 ${alert.device_id}`}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{alert.type}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                      {alert.message}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Label color={getLevelColor(alert.level)} variant="soft">
+                      {alert.level}
+                    </Label>
+                  </TableCell>
+                  <TableCell>
+                    <Label color={alert.read ? 'default' : 'error'} variant="soft">
+                      {alert.read ? '已读' : '未读'}
+                    </Label>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatTimestamp(alert.timestamp)}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {emptyRows > 0 && (
+              <TableRow style={{ height: 53 * emptyRows }}>
+                <TableCell colSpan={7} />
+              </TableRow>
+            )}
+            {filteredAlerts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <Typography color="text.secondary">暂无报警数据</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Pagination */}
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={filteredAlerts.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        labelRowsPerPage="每页行数:"
+        labelDisplayedRows={({ from, to, count }) =>
+          `${from}-${to} / ${count !== -1 ? count : `超过 ${to}`}`
+        }
+      />
+
+      {/* Filter Menu */}
+      <Menu
+        anchorEl={filterMenuAnchor}
+        open={Boolean(filterMenuAnchor)}
+        onClose={() => setFilterMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => setFilterLevel('all')}>
+          <ListItemText>全部等级</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterLevel('critical')}>
+          <ListItemText>严重</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterLevel('high')}>
+          <ListItemText>高</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterLevel('medium')}>
+          <ListItemText>中</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterLevel('low')}>
+          <ListItemText>低</ListItemText>
+        </MenuItem>
+        <MenuItem divider />
+        <MenuItem onClick={() => setFilterRead('all')}>
+          <ListItemText>全部状态</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterRead('read')}>
+          <ListItemText>已读</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => setFilterRead('unread')}>
+          <ListItemText>未读</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Action Menu */}
+      <Menu
+        anchorEl={actionMenuAnchor}
+        open={Boolean(actionMenuAnchor)}
+        onClose={() => setActionMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => handleMarkAsRead(selected)}>
+          <ListItemIcon>
+            <ReadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>标记为已读</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleDeleteAlerts(selected)}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText>删除报警</ListItemText>
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
+}

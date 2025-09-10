@@ -1,8 +1,8 @@
-import axios from "axios";
-import type { Device, Alert } from "../types";
+import axios from 'axios';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+import type { User, Alert, Device, ApiResponse } from '../types';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,59 +11,46 @@ const api = axios.create({
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
+  (config: any) => {
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error: any) => Promise.reject(error)
 );
 
 // Response interceptor to handle auth errors
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: any) => response,
+  (error: any) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/sign-in';
     }
     return Promise.reject(error);
-  },
+  }
 );
-
-export interface ApiResponse<T = any> {
-  data?: T;
-  message?: string;
-  error?: string;
-}
 
 export interface GenerateTestDataResponse {
   test_data: any[];
 }
 
 // Helper function to extract data from API response
-export const getResponseData = <T>(response: ApiResponse<T>): T | undefined => {
-  return response.data;
-};
+export const getResponseData = <T>(response: ApiResponse<T>): T | undefined => response.data;
 
 export const apiService = {
   // Auth
   login: (credentials: { username: string; password: string }) =>
-    api.post<ApiResponse<{ token: string; user: any }>>("/login", credentials),
+    api.post<ApiResponse<{ token: string; user: any }>>('/login', credentials),
 
   register: (userData: { username: string; email: string; password: string }) =>
-    api.post<ApiResponse>("/register", userData),
+    api.post<ApiResponse>('/register', userData),
 
   // Devices
-  getDevices: () =>
-    api
-      .get<ApiResponse<Device[]>>("/devices")
-      .then((response) => response.data),
+  getDevices: () => api.get<ApiResponse<Device[]>>('/devices').then((response) => response.data),
 
   createDevice: (deviceData: {
     name: string;
@@ -71,7 +58,7 @@ export const apiService = {
     longitude?: number;
     latitude?: number;
     address?: string;
-  }) => api.post<ApiResponse<Device>>("/devices", deviceData),
+  }) => api.post<ApiResponse<Device>>('/devices', deviceData),
 
   deleteDevice: (id: number) => api.delete<ApiResponse>(`/devices/${id}`),
 
@@ -81,31 +68,30 @@ export const apiService = {
       longitude: number;
       latitude: number;
       address?: string;
-    },
+    }
   ) => api.put<ApiResponse>(`/devices/${id}/location`, locationData),
 
   updateDeviceStatus: (id: number, statusData: { status: string }) =>
     api.put<ApiResponse>(`/devices/${id}/status`, statusData),
 
   // Alerts
-  getAlerts: () =>
-    api.get<ApiResponse<Alert[]>>("/alerts").then((response) => response.data),
+  getAlerts: () => api.get<ApiResponse<Alert[]>>('/alerts').then((response) => response.data),
 
   getUnreadAlerts: () =>
     api
-      .get<ApiResponse<{ count: number }>>("/alerts/unread")
-      .then((response) => (response.data as any)?.count || 0),
+      .get<ApiResponse<{ count: number }>>('/alerts/unread')
+      .then((response: any) => (response.data as any)?.count || 0),
 
-  createAlert: (alertData: {
-    device_id: number;
-    type: string;
-    message: string;
-    level: string;
-  }) => api.post<ApiResponse<Alert>>("/alerts", alertData),
+  createAlert: (alertData: { device_id: number; type: string; message: string; level: string }) =>
+    api.post<ApiResponse<Alert>>('/alerts', alertData),
 
   markAlertAsRead: (id: number) => api.put<ApiResponse>(`/alerts/${id}/read`),
 
+  markAlertsAsRead: (ids: number[]) => api.put<ApiResponse>('/alerts/read', { ids }),
+
   deleteAlert: (id: number) => api.delete<ApiResponse>(`/alerts/${id}`),
+
+  deleteAlerts: (ids: number[]) => api.delete<ApiResponse>('/alerts', { data: { ids } }),
 
   // Data push
   pushDeviceData: (data: {
@@ -115,12 +101,29 @@ export const apiService = {
     address?: string;
     status?: string;
     data?: any;
-  }) => api.post<ApiResponse>("/data/push", data),
+  }) => api.post<ApiResponse>('/data/push', data),
 
-  generateTestData: () =>
-    api.post<ApiResponse<GenerateTestDataResponse>>("/data/generate-test"),
+  generateTestData: () => api.post<ApiResponse<GenerateTestDataResponse>>('/data/generate-test'),
 
-  pushTestData: (data: any) => api.post<ApiResponse>("/data/push-test", data),
+  pushTestData: (data: any) => api.post<ApiResponse>('/data/push-test', data),
+
+  // Users
+  getUsers: () => api.get<ApiResponse<User[]>>('/users').then((response) => response.data),
+
+  createUser: (userData: { username: string; password: string; role: string }) =>
+    api.post<ApiResponse<User>>('/users', userData),
+
+  updateUser: (
+    id: number,
+    userData: {
+      username: string;
+      role: string;
+    }
+  ) => api.put<ApiResponse<User>>(`/users/${id}`, userData),
+
+  deleteUser: (id: number) => api.delete<ApiResponse>(`/users/${id}`),
+
+  markAllAlertsAsRead: () => api.put<ApiResponse>('/alerts/read-all'),
 };
 
 export { api };

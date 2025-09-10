@@ -1,25 +1,59 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import EnhancedDashboard from "./pages/EnhancedDashboard";
+import 'src/global.css';
 
-import PrivateRoute from "./components/PrivateRoute";
-import "./App.css";
+import { useEffect } from 'react';
 
-function App() {
+import Fab from '@mui/material/Fab';
+
+import { usePathname } from 'src/routes/hooks';
+
+import { ThemeProvider } from 'src/theme/theme-provider';
+
+import { Iconify } from 'src/components/iconify';
+import { SnackbarProvider } from 'src/components/snackbar';
+
+// ----------------------------------------------------------------------
+
+type AppProps = {
+  children: React.ReactNode;
+};
+
+export default function App({ children }: AppProps) {
+  useScrollToTop();
+
+  const githubButton = () => (
+    <Fab
+      size="medium"
+      aria-label="Github"
+      href="https://github.com/minimal-ui-kit/material-kit-react"
+      sx={{
+        zIndex: 9,
+        right: 20,
+        bottom: 20,
+        width: 48,
+        height: 48,
+        position: 'fixed',
+        bgcolor: 'grey.800',
+      }}
+    >
+      <Iconify width={24} icon="socials:github" sx={{ '--color': 'white' }} />
+    </Fab>
+  );
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<PrivateRoute />}>
-          <Route path="/" element={<EnhancedDashboard />} />
-        </Route>
-        <Route path="/old-dashboard" element={<PrivateRoute />}>
-          <Route path="/old-dashboard" element={<DashboardPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <SnackbarProvider>{children}</SnackbarProvider>
+    </ThemeProvider>
   );
 }
 
-export default App;
+// ----------------------------------------------------------------------
+
+function useScrollToTop() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}

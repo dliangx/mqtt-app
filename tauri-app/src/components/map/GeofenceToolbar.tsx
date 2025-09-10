@@ -142,7 +142,7 @@ const GeofenceToolbar: React.FC<GeofenceToolbarProps> = ({
         left: 10,
         zIndex: 1000,
         padding: expanded ? 1 : 0,
-        minWidth: expanded ? 300 : 36,
+        minWidth: expanded ? 260 : 36,
         maxHeight: expanded ? 400 : 36,
         overflow: "auto",
         transition: "all 0.3s ease",
@@ -202,9 +202,9 @@ const GeofenceToolbar: React.FC<GeofenceToolbarProps> = ({
             display="flex"
             alignItems="center"
             justifyContent="space-between"
-            mb={2}
+            mb={1}
           >
-            <Typography variant="subtitle2" component="h3">
+            <Typography variant="subtitle1" component="h3">
               地理围栏
             </Typography>
             <Button
