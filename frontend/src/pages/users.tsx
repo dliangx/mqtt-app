@@ -52,7 +52,7 @@ export default function UsersPage() {
     try {
       setLoading(true);
       const response = await apiService.getUsers();
-      setUsers(Array.isArray(response) ? [...response] : []);
+      setUsers(Array.isArray(response.data) ? [...response.data] : []);
     } catch (err) {
       console.error('Failed to fetch users:', err);
       enqueueSnackbar('获取用户列表失败', { variant: 'error' });
@@ -128,7 +128,7 @@ export default function UsersPage() {
   }
 
   return (
-    <>
+    <Box sx={{ p: 4 }}>
       <title>{`用户管理 - ${CONFIG.appName}`}</title>
 
       <Box>
@@ -290,6 +290,6 @@ export default function UsersPage() {
           </DialogActions>
         </Dialog>
       </Box>
-    </>
+    </Box>
   );
 }

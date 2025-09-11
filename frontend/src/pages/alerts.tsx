@@ -81,7 +81,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <>
+    <Box sx={{ p: 4 }}>
       <title>{`消息中心 - ${CONFIG.appName}`}</title>
 
       <Box>
@@ -114,6 +114,6 @@ export default function AlertsPage() {
           <AlertList alerts={alerts} onRefresh={fetchData} onAlertClick={handleAlertClick} />
         </Paper>
       </Box>
-    </>
+    </Box>
   );
 }

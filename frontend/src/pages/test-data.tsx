@@ -60,7 +60,7 @@ export default function TestDataPage() {
   };
 
   return (
-    <>
+    <Box sx={{ p: 4 }}>
       <title>{`数据测试 - ${CONFIG.appName}`}</title>
 
       <Box>
@@ -125,6 +125,6 @@ export default function TestDataPage() {
           </Box>
         )}
       </Box>
-    </>
+    </Box>
   );
 }

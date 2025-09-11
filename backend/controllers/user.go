@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/liang/mqtt-app/backend/database"
@@ -18,7 +19,26 @@ func GetUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": users})
+	type UserResponse struct {
+		ID        uint      `json:"id"`
+		Username  string    `json:"username"`
+		Role      string    `json:"role"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+
+	var response []UserResponse
+	for _, user := range users {
+		response = append(response, UserResponse{
+			ID:        user.ID,
+			Username:  user.Username,
+			Role:      user.Role,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": response})
 }
 
 // CreateUser 创建新用户

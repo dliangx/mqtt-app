@@ -6,7 +6,7 @@ export interface Device {
   longitude: number;
   latitude: number;
   address: string;
-  status: "online" | "offline" | "warning";
+  status: 'online' | 'offline' | 'warning';
   last_seen: number;
   created_at: string;
   updated_at: string;
@@ -17,7 +17,7 @@ export interface Alert {
   device_id: number;
   type: string;
   message: string;
-  level: "critical" | "high" | "medium" | "low";
+  level: 'critical' | 'high' | 'medium' | 'low';
   read: boolean;
   timestamp: number;
   created_at: string;
@@ -44,7 +44,6 @@ export interface ApiResponse<T = any> {
 export interface User {
   id: number;
   username: string;
-  email: string;
   role: string;
   created_at: string;
 }

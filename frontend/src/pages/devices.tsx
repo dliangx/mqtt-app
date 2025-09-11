@@ -165,7 +165,7 @@ export default function DevicesPage() {
   }
 
   return (
-    <>
+    <Box sx={{ p: 4 }}>
       <title>{`设备管理 - ${CONFIG.appName}`}</title>
 
       <Box>
@@ -355,6 +355,6 @@ export default function DevicesPage() {
           </DialogActions>
         </Dialog>
       </Box>
-    </>
+    </Box>
   );
 }
