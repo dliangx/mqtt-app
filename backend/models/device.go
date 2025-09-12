@@ -6,16 +6,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// DeviceGroup 设备组
+type DeviceGroup struct {
+	gorm.Model
+	Name        string `gorm:"not null" json:"name"`
+	Description string `json:"description"`
+}
+
 type Device struct {
 	gorm.Model
-	Name      string  `gorm:"not null" json:"name"`
-	Topic     string  `gorm:"uniqueIndex;not null" json:"topic"`
-	UserID    uint    `json:"user_id"`
-	Longitude float64 `json:"longitude"`
-	Latitude  float64 `json:"latitude"`
-	Address   string  `json:"address"`
-	Status    string  `gorm:"default:'offline'" json:"status"`
-	LastSeen  int64   `json:"last_seen"`
+	Name        string      `gorm:"not null" json:"name"`
+	Topic       string      `gorm:"uniqueIndex;not null" json:"topic"`
+	UserID      uint        `json:"user_id"`
+	GroupID     *uint       `json:"group_id"` // 可为空的设备组ID
+	Longitude   float64     `json:"longitude"`
+	Latitude    float64     `json:"latitude"`
+	Address     string      `json:"address"`
+	Status      string      `gorm:"default:'offline'" json:"status"`
+	LastSeen    int64       `json:"last_seen"`
+	DeviceGroup DeviceGroup `gorm:"foreignKey:GroupID" json:"device_group,omitempty"`
 }
 
 type Alert struct {

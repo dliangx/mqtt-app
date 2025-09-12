@@ -39,11 +39,21 @@ export interface ParseResult {
   timestamp: string;
 }
 
+export interface DeviceGroup {
+  id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Device {
   id: number;
   name: string;
   topic: string;
   user_id: number;
+  group_id?: number;
+  device_group?: DeviceGroup;
   longitude: number;
   latitude: number;
   address: string;

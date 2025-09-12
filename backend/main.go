@@ -77,6 +77,12 @@ func main() {
 			auth.POST("/users", controllers.CreateUser)
 			auth.PUT("/users/:id", controllers.UpdateUser)
 			auth.DELETE("/users/:id", controllers.DeleteUser)
+
+			// Device group routes
+			auth.GET("/device-groups", controllers.GetDeviceGroups)
+			auth.POST("/device-groups", controllers.CreateDeviceGroup)
+			auth.PUT("/device-groups/:id", controllers.UpdateDeviceGroup)
+			auth.DELETE("/device-groups/:id", controllers.DeleteDeviceGroup)
 		}
 	}
 

@@ -113,6 +113,18 @@ export const apiService = {
   // Users
   getUsers: () => api.get<ApiResponse<User[]>>('/users').then((response) => response.data),
 
+  // Device Groups
+  getDeviceGroups: () =>
+    api.get<ApiResponse<any[]>>('/device-groups').then((response) => response.data),
+
+  createDeviceGroup: (groupData: { name: string; description?: string }) =>
+    api.post<ApiResponse<any>>('/device-groups', groupData),
+
+  updateDeviceGroup: (id: number, groupData: { name?: string; description?: string }) =>
+    api.put<ApiResponse<any>>(`/device-groups/${id}`, groupData),
+
+  deleteDeviceGroup: (id: number) => api.delete<ApiResponse>(`/device-groups/${id}`),
+
   createUser: (userData: { username: string; password: string; role: string }) =>
     api.post<ApiResponse<User>>('/users', userData),
 

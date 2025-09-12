@@ -13,6 +13,7 @@ func CreateDevice(c *gin.Context) {
 	var input struct {
 		Name      string  `json:"name" binding:"required"`
 		Topic     string  `json:"topic" binding:"required"`
+		GroupID   *uint   `json:"group_id"`
 		Longitude float64 `json:"longitude"`
 		Latitude  float64 `json:"latitude"`
 		Address   string  `json:"address"`
@@ -29,6 +30,7 @@ func CreateDevice(c *gin.Context) {
 		Name:      input.Name,
 		Topic:     input.Topic,
 		UserID:    userID,
+		GroupID:   input.GroupID,
 		Longitude: input.Longitude,
 		Latitude:  input.Latitude,
 		Address:   input.Address,
@@ -49,7 +51,7 @@ func GetDevices(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var devices []models.Device
-	database.DB.Where("user_id = ?", userID).Find(&devices)
+	database.DB.Preload("DeviceGroup").Where("user_id = ?", userID).Find(&devices)
 
 	c.JSON(http.StatusOK, devices)
 }

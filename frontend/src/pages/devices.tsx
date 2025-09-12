@@ -1,23 +1,27 @@
-import type { Device } from 'src/types';
+import type { Device, DeviceGroup } from 'src/types';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
+  Category as CategoryIcon,
   LocationOn as LocationIcon,
 } from '@mui/icons-material';
 import {
   Box,
+  Tab,
   Chip,
+  Tabs,
   Paper,
   Table,
   Button,
   Dialog,
   Tooltip,
   TableRow,
+  MenuItem,
   TableBody,
   TableCell,
   TableHead,
@@ -40,21 +44,45 @@ import { useSnackbar } from 'src/components/snackbar';
 // ----------------------------------------------------------------------
 
 export default function DevicesPage() {
+  const [activeTab, setActiveTab] = useState(0);
   const { enqueueSnackbar } = useSnackbar();
   const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Dialogs state
   const [addDeviceDialog, setAddDeviceDialog] = useState(false);
+  const [addGroupDialog, setAddGroupDialog] = useState(false);
+  const [editGroupDialog, setEditGroupDialog] = useState(false);
+
+  // Form state
+  const [selectedGroup, setSelectedGroup] = useState<DeviceGroup | null>(null);
   const [newDevice, setNewDevice] = useState({
     name: '',
     topic: '',
+    group_id: undefined as number | undefined,
     longitude: 0,
     latitude: 0,
     address: '',
   });
+  const [newGroup, setNewGroup] = useState({
+    name: '',
+    description: '',
+  });
 
-  const fetchDevices = async () => {
+  const fetchDeviceGroups = useCallback(async () => {
+    try {
+      const response = await apiService.getDeviceGroups();
+      setDeviceGroups(Array.isArray(response) ? response : []);
+    } catch (err) {
+      console.error('Failed to fetch device groups:', err);
+      enqueueSnackbar('获取设备组列表失败', { variant: 'error' });
+    }
+  }, [enqueueSnackbar]);
+
+  const fetchDevices = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.getDevices();
@@ -65,6 +93,8 @@ export default function DevicesPage() {
         name: device.name,
         topic: device.topic,
         user_id: device.user_id,
+        group_id: device.group_id,
+        device_group: device.device_group,
         longitude: device.longitude,
         latitude: device.latitude,
         address: device.address,
@@ -81,12 +111,36 @@ export default function DevicesPage() {
     } finally {
       setLoading(false);
     }
+  }, [enqueueSnackbar]);
+
+  const handleAddGroup = async () => {
+    try {
+      await apiService.createDeviceGroup(newGroup);
+      setAddGroupDialog(false);
+      setNewGroup({ name: '', description: '' });
+      enqueueSnackbar('设备组添加成功', { variant: 'success' });
+      fetchDeviceGroups();
+    } catch (err) {
+      console.error('Failed to add device group:', err);
+      enqueueSnackbar('添加设备组失败', { variant: 'error' });
+    }
   };
 
-  useEffect(() => {
-    fetchDevices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const handleEditGroup = async () => {
+    if (!selectedGroup) return;
+
+    try {
+      await apiService.updateDeviceGroup(selectedGroup.id, newGroup);
+      setEditGroupDialog(false);
+      setSelectedGroup(null);
+      setNewGroup({ name: '', description: '' });
+      enqueueSnackbar('设备组更新成功', { variant: 'success' });
+      fetchDeviceGroups();
+    } catch (err) {
+      console.error('Failed to update device group:', err);
+      enqueueSnackbar('更新设备组失败', { variant: 'error' });
+    }
+  };
 
   const handleAddDevice = async () => {
     try {
@@ -95,6 +149,7 @@ export default function DevicesPage() {
       setNewDevice({
         name: '',
         topic: '',
+        group_id: undefined,
         longitude: 0,
         latitude: 0,
         address: '',
@@ -117,6 +172,11 @@ export default function DevicesPage() {
       enqueueSnackbar('删除设备失败', { variant: 'error' });
     }
   };
+
+  useEffect(() => {
+    fetchDevices();
+    fetchDeviceGroups();
+  }, [fetchDevices, fetchDeviceGroups]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -145,7 +205,7 @@ export default function DevicesPage() {
     return new Date(timestamp).toLocaleString();
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -154,7 +214,26 @@ export default function DevicesPage() {
     setPage(0);
   };
 
-  const paginatedDevices = devices.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const filteredDevices =
+    activeTab === 0
+      ? devices
+      : activeTab === 1
+        ? devices.filter((device) => !device.group_id)
+        : devices.filter((device) => device.group_id === deviceGroups[activeTab - 2]?.id);
+
+  // Debug logging
+  console.log('Active Tab:', activeTab);
+  console.log('Device Groups:', deviceGroups);
+  console.log('All Devices:', devices);
+  console.log('Filtered Devices:', filteredDevices);
+  if (activeTab >= 2) {
+    console.log('Selected Group:', deviceGroups[activeTab - 2]);
+  }
+
+  const paginatedDevices = filteredDevices.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   if (loading) {
     return (
@@ -182,7 +261,30 @@ export default function DevicesPage() {
             >
               添加设备
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<CategoryIcon />}
+              onClick={() => setAddGroupDialog(true)}
+            >
+              添加设备组
+            </Button>
           </Box>
+        </Box>
+
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_: React.SyntheticEvent, newValue: number) => {
+              console.log('Tab changed from', activeTab, 'to', newValue);
+              setActiveTab(newValue);
+            }}
+          >
+            <Tab label="所有设备" />
+            <Tab label="未分组" />
+            {deviceGroups.map((group, index) => (
+              <Tab key={group.id} label={`${group.name} `} />
+            ))}
+          </Tabs>
         </Box>
 
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -192,6 +294,7 @@ export default function DevicesPage() {
                 <TableRow>
                   <TableCell>设备名称</TableCell>
                   <TableCell>Topic</TableCell>
+                  <TableCell>设备组</TableCell>
                   <TableCell>状态</TableCell>
                   <TableCell>位置坐标</TableCell>
                   <TableCell>地址</TableCell>
@@ -211,6 +314,11 @@ export default function DevicesPage() {
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
                         {device.topic}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {device.device_group?.name || '未分组'}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -267,7 +375,8 @@ export default function DevicesPage() {
               </TableBody>
             </Table>
           </TableContainer>
-          {devices.length === 0 && (
+
+          {filteredDevices.length === 0 && (
             <Box display="flex" justifyContent="center" alignItems="center" height={200}>
               <Typography variant="body2" color="text.secondary">
                 暂无设备数据
@@ -278,7 +387,7 @@ export default function DevicesPage() {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={devices.length}
+            count={filteredDevices.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
@@ -313,14 +422,29 @@ export default function DevicesPage() {
                 required
               />
               <TextField
+                select
+                label="设备组"
+                value={newDevice.group_id || ''}
+                onChange={(e) =>
+                  setNewDevice({
+                    ...newDevice,
+                    group_id: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
+                }
+              >
+                <MenuItem value="">未分组</MenuItem>
+                {deviceGroups.map((group) => (
+                  <MenuItem key={group.id} value={group.id}>
+                    {group.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
                 label="经度"
                 type="number"
                 value={newDevice.longitude}
                 onChange={(e) =>
-                  setNewDevice({
-                    ...newDevice,
-                    longitude: parseFloat(e.target.value) || 0,
-                  })
+                  setNewDevice({ ...newDevice, longitude: parseFloat(e.target.value) || 0 })
                 }
               />
               <TextField
@@ -328,10 +452,7 @@ export default function DevicesPage() {
                 type="number"
                 value={newDevice.latitude}
                 onChange={(e) =>
-                  setNewDevice({
-                    ...newDevice,
-                    latitude: parseFloat(e.target.value) || 0,
-                  })
+                  setNewDevice({ ...newDevice, latitude: parseFloat(e.target.value) || 0 })
                 }
               />
               <TextField
@@ -351,6 +472,72 @@ export default function DevicesPage() {
               disabled={!newDevice.name || !newDevice.topic}
             >
               添加
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Group Dialog */}
+        <Dialog
+          open={addGroupDialog}
+          onClose={() => setAddGroupDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>添加设备组</DialogTitle>
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <TextField
+                label="设备组名称"
+                value={newGroup.name}
+                onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+                required
+              />
+              <TextField
+                label="描述"
+                value={newGroup.description}
+                onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
+                multiline
+                rows={3}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAddGroupDialog(false)}>取消</Button>
+            <Button onClick={handleAddGroup} variant="contained" disabled={!newGroup.name}>
+              添加
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Edit Group Dialog */}
+        <Dialog
+          open={editGroupDialog}
+          onClose={() => setEditGroupDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>编辑设备组</DialogTitle>
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <TextField
+                label="设备组名称"
+                value={newGroup.name}
+                onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+                required
+              />
+              <TextField
+                label="描述"
+                value={newGroup.description}
+                onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
+                multiline
+                rows={3}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditGroupDialog(false)}>取消</Button>
+            <Button onClick={handleEditGroup} variant="contained" disabled={!newGroup.name}>
+              保存
             </Button>
           </DialogActions>
         </Dialog>
