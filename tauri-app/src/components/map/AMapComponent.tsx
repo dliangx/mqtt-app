@@ -56,7 +56,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const geofencePolygonsRef = useRef<any[]>([]);
     const mouseToolRef = useRef<any>(null);
     const prevDevicesJsonRef = useRef<string>("");
-    const drivingRef = useRef<any>(null);
     const routePolylineRef = useRef<any>(null);
     const [navigationInfo, setNavigationInfo] = useState<{
       visible: boolean;
@@ -96,7 +95,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       script.id = scriptId;
       script.src = `https://webapi.amap.com/maps?v=2.0&key=${
         import.meta.env.VITE_AMAP_API_KEY
-      }&plugin=AMap.MarkerClusterer,AMap.MouseTool,AMap.Polygon,AMap.Circle,AMap.Driving`;
+      }&plugin=AMap.MarkerClusterer,AMap.MouseTool,AMap.Polygon,AMap.Circle`;
       script.async = true;
       script.onload = () => {
         initMap();
@@ -194,14 +193,8 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         setMapLoaded(true);
         updateMarkers(map);
 
-        // 初始化驾车导航服务
-        drivingRef.current = new window.AMap.Driving({
-          map: map,
-          policy: window.AMap.DrivingPolicy.LEAST_TIME, // 最短时间
-          hideMarkers: true, // 隐藏标记
-          autoFitView: true, // 自动调整视图
-          showTraffic: false, // 不显示实时交通
-        });
+        // 初始化驾车导航服务（使用Web服务API）
+        // drivingRef不再需要，我们直接使用fetch调用Web服务API
 
         // 添加地图点击事件监听
         map.on("click", handleMapClick);
@@ -388,9 +381,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       return button;
     };
 
-    const showRouteToDevice = (device: Device) => {
+    const showRouteToDevice = async (device: Device) => {
       console.log("开始路线规划到设备:", device.name);
-      if (!drivingRef.current || !mapInstanceRef.current) return;
+      if (!mapInstanceRef.current) return;
 
       // 清除之前的路线
       if (routePolylineRef.current) {
@@ -400,66 +393,74 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
 
       // 获取当前位置（这里使用地图中心点作为起点，实际应用中可能需要获取用户真实位置）
       const mapCenter = mapInstanceRef.current.getCenter();
-      const startPoint = [mapCenter.lng, mapCenter.lat];
-      const endPoint = [device.longitude, device.latitude];
+      const startPoint = `${mapCenter.lng},${mapCenter.lat}`;
+      const endPoint = `${device.longitude},${device.latitude}`;
 
-      // 搜索路线
-      drivingRef.current.search(
-        startPoint,
-        endPoint,
-        (status: string, result: any) => {
-          console.log("路线规划结果状态:", status);
-          if (status === "complete") {
-            if (result.routes && result.routes.length) {
-              const route = result.routes[0];
-              console.log("路线规划成功，找到", result.routes.length, "条路线");
+      try {
+        // 使用高德地图Web服务API进行路线规划
+        const apiKey = import.meta.env.VITE_AMAP_API_KEY;
+        const url = `https://restapi.amap.com/v3/direction/driving?origin=${startPoint}&destination=${endPoint}&key=${apiKey}&strategy=0`;
 
-              // 绘制路线
-              const path = route.paths[0];
-              routePolylineRef.current = new window.AMap.Polyline({
-                path: path.steps.reduce(
-                  (acc: any[], step: any) => [...acc, ...step.path],
-                  [],
-                ),
-                strokeColor: "#1976d2",
-                strokeOpacity: 0.8,
-                strokeWeight: 6,
-                map: mapInstanceRef.current,
-              });
+        const response = await fetch(url);
+        const result = await response.json();
 
-              // 显示导航信息
-              setNavigationInfo({
-                visible: true,
-                device: device,
-                routeInfo: {
-                  distance: path.distance,
-                  time: path.duration,
-                  tolls: path.tolls,
-                  toll_distance: path.toll_distance,
-                },
-              });
+        console.log("路线规划API响应:", result);
 
-              // 调整地图视图以显示完整路线
-              mapInstanceRef.current.setFitView([routePolylineRef.current]);
+        if (
+          result.status === "1" &&
+          result.route &&
+          result.route.paths &&
+          result.route.paths.length > 0
+        ) {
+          const path = result.route.paths[0];
+          console.log(
+            "路线规划成功，距离:",
+            path.distance,
+            "米，时间:",
+            path.duration,
+            "秒",
+          );
 
-              // 禁用Driving服务默认的标记点击行为
-              if (result && result.markers) {
-                result.markers.forEach((marker: any) => {
-                  if (marker && marker.on) {
-                    marker.on("click", (e: any) => {
-                      e && e.stopPropagation && e.stopPropagation();
-                      e && e.preventDefault && e.preventDefault();
-                      return false;
-                    });
-                  }
-                });
-              }
-            }
-          } else {
-            console.error("路线规划失败:", status, result);
-          }
-        },
-      );
+          // 解析路线坐标点
+          const polylinePath = path.steps.flatMap((step: any) => {
+            const points = step.polyline.split(";").map((point: string) => {
+              const [lng, lat] = point.split(",");
+              return [parseFloat(lng), parseFloat(lat)];
+            });
+            return points;
+          });
+
+          // 绘制路线
+          routePolylineRef.current = new window.AMap.Polyline({
+            path: polylinePath,
+            strokeColor: "#1976d2",
+            strokeOpacity: 0.8,
+            strokeWeight: 6,
+            map: mapInstanceRef.current,
+          });
+
+          // 显示导航信息
+          setNavigationInfo({
+            visible: true,
+            device,
+            routeInfo: {
+              distance: parseInt(path.distance),
+              time: parseInt(path.duration),
+              tolls: parseInt(path.tolls) || 0,
+              toll_distance: parseInt(path.toll_distance) || 0,
+            },
+          });
+
+          // 调整地图视图以显示完整路线
+          mapInstanceRef.current.setFitView([routePolylineRef.current]);
+        } else {
+          console.error("路线规划失败:", result.info, result);
+          alert(`路线规划失败: ${result.info || "未知错误"}`);
+        }
+      } catch (error) {
+        console.error("路线规划请求失败:", error);
+        alert("路线规划请求失败，请检查网络连接");
+      }
     };
 
     const clearRoute = () => {
