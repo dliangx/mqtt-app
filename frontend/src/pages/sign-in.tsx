@@ -46,7 +46,14 @@ export default function SignInPage() {
         const response = await apiService.login({ username, password });
         if (response.data?.token) {
           localStorage.setItem('token', response.data.token);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem(
+            'user',
+            JSON.stringify({
+              username,
+              displayName: username,
+              email: `${username}@example.com`,
+            })
+          );
           enqueueSnackbar('登录成功', { variant: 'success' });
           navigate('/');
         } else {
