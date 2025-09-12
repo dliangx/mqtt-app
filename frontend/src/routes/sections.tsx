@@ -16,6 +16,7 @@ export const DashboardPage = lazy(() => import('src/pages/dashboard'));
 export const MapMonitorPage = lazy(() => import('src/pages/map-monitor'));
 export const DevicesPage = lazy(() => import('src/pages/devices'));
 export const AlertsPage = lazy(() => import('src/pages/alerts'));
+export const MessageTypesPage = lazy(() => import('src/pages/message-types'));
 export const TestDataPage = lazy(() => import('src/pages/test-data'));
 export const UsersPage = lazy(() => import('src/pages/users'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
@@ -56,6 +57,7 @@ export const routesSection: RouteObject[] = [
       { path: 'map-monitor', element: <MapMonitorPage /> },
       { path: 'devices', element: <DevicesPage /> },
       { path: 'alerts', element: <AlertsPage /> },
+      { path: 'message-types', element: <MessageTypesPage /> },
       { path: 'test-data', element: <TestDataPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'products', element: <ProductsPage /> },

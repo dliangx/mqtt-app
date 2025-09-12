@@ -5,6 +5,7 @@ import {
   Devices as DevicesIcon,
   Warning as WarningIcon,
   DataUsage as DataUsageIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 
 import { Label } from 'src/components/label';
@@ -46,6 +47,11 @@ export const navData = [
         +0
       </Label>
     ),
+  },
+  {
+    title: '消息类型配置',
+    path: '/message-types',
+    icon: <Icon component={SettingsIcon} />,
   },
   {
     title: '数据测试',

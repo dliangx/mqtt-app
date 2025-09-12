@@ -2,13 +2,14 @@ import type { Alert as AlertType } from 'src/types';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
-import { Refresh as RefreshIcon } from '@mui/icons-material';
-import { Box, Chip, Paper, Typography, IconButton, LinearProgress } from '@mui/material';
+import { Refresh as RefreshIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import { Box, Chip, Paper, Typography, IconButton, LinearProgress, Button } from '@mui/material';
 
 import { CONFIG } from 'src/config-global';
 import { apiService } from 'src/services/api';
 
 import { useSnackbar } from 'src/components/snackbar';
+import { useRouter } from 'src/routes/hooks';
 
 import AlertList from '../components/alerts/AlertList';
 
@@ -16,6 +17,7 @@ import AlertList from '../components/alerts/AlertList';
 
 export default function AlertsPage() {
   const { enqueueSnackbar } = useSnackbar();
+  const router = useRouter();
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -107,6 +109,14 @@ export default function AlertsPage() {
             <IconButton onClick={fetchData} size="large">
               <RefreshIcon />
             </IconButton>
+            <Button
+              variant="outlined"
+              startIcon={<SettingsIcon />}
+              onClick={() => router.push('/message-types')}
+              size="small"
+            >
+              消息类型配置
+            </Button>
           </Box>
         </Box>
 

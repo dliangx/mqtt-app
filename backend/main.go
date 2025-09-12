@@ -53,6 +53,17 @@ func main() {
 			auth.PUT("/alerts/:id/read", controllers.MarkAlertAsRead)
 			auth.DELETE("/alerts/:id", controllers.DeleteAlert)
 
+			// Message type config routes
+			auth.GET("/message-types", controllers.GetMessageTypeConfigs)
+			auth.GET("/message-types/default", controllers.GetDefaultMessageTypeConfig)
+			auth.GET("/message-types/:id", controllers.GetMessageTypeConfig)
+			auth.POST("/message-types", controllers.CreateMessageTypeConfig)
+			auth.PUT("/message-types/:id", controllers.UpdateMessageTypeConfig)
+			auth.DELETE("/message-types/:id", controllers.DeleteMessageTypeConfig)
+			auth.PUT("/message-types/:id/default", controllers.SetDefaultMessageTypeConfig)
+			auth.POST("/message-types/parse", controllers.ParseMessageData)
+			auth.POST("/message-types/test", controllers.TestMessageFormat)
+
 			// Data push routes
 			auth.POST("/data/push", controllers.PushDeviceData)
 			auth.POST("/data/generate-test", controllers.GenerateTestData)

@@ -127,6 +127,45 @@ export const apiService = {
   deleteUser: (id: number) => api.delete<ApiResponse>(`/users/${id}`),
 
   markAllAlertsAsRead: () => api.put<ApiResponse>('/alerts/read-all'),
+
+  // Message type configs
+  getMessageTypeConfigs: () =>
+    api.get<ApiResponse<any[]>>('/message-types').then((response) => response.data),
+
+  getMessageTypeConfig: (id: number) =>
+    api.get<ApiResponse<any>>(`/message-types/${id}`).then((response) => response.data),
+
+  getDefaultMessageTypeConfig: () =>
+    api.get<ApiResponse<any>>('/message-types/default').then((response) => response.data),
+
+  createMessageTypeConfig: (configData: {
+    name: string;
+    description?: string;
+    protocol: string;
+    format: any;
+    is_default?: boolean;
+  }) => api.post<ApiResponse<any>>('/message-types', configData),
+
+  updateMessageTypeConfig: (
+    id: number,
+    configData: {
+      name?: string;
+      description?: string;
+      protocol?: string;
+      format?: any;
+      is_default?: boolean;
+    }
+  ) => api.put<ApiResponse<any>>(`/message-types/${id}`, configData),
+
+  deleteMessageTypeConfig: (id: number) => api.delete<ApiResponse>(`/message-types/${id}`),
+
+  setDefaultMessageTypeConfig: (id: number) => api.put<ApiResponse>(`/message-types/${id}/default`),
+
+  parseMessageData: (data: { config_id: number; raw_data: string }) =>
+    api.post<ApiResponse<any>>('/message-types/parse', data),
+
+  testMessageFormat: (data: { format: any; test_data: string }) =>
+    api.post<ApiResponse<any>>('/message-types/test', data),
 };
 
 export { api };

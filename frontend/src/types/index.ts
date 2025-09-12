@@ -1,3 +1,44 @@
+export interface MessageTypeConfig {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string;
+  protocol: string;
+  format: MessageFormat | string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageFormat {
+  header: FieldDefinition[];
+  body: FieldDefinition[];
+  footer: FieldDefinition[];
+  checksum?: FieldDefinition;
+  length?: FieldDefinition;
+  delimiter: string;
+  encoding: string;
+}
+
+export interface FieldDefinition {
+  name: string;
+  type: string;
+  offset: number;
+  length: number;
+  endian: string;
+  signed: boolean;
+  decimals: number;
+  unit: string;
+}
+
+export interface ParseResult {
+  success: boolean;
+  error?: string;
+  fields: Record<string, any>;
+  raw_data: string;
+  timestamp: string;
+}
+
 export interface Device {
   id: number;
   name: string;
@@ -23,6 +64,8 @@ export interface Alert {
   created_at: string;
   updated_at: string;
   device?: Device;
+  raw_data?: string;
+  parsed_data?: string;
 }
 
 export interface DeviceData {
