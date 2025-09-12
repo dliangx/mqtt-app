@@ -180,7 +180,7 @@ export default function MessageTypeForm({ config, onSave, onCancel, mode }: Mess
     field: FieldDefinition,
     index: number
   ) => (
-    <Paper key={index} sx={{ p: 2, mb: 1, bgcolor: 'grey.50' }}>
+    <Paper key={index} sx={{ p: 2, mb: 1 }}>
       <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
         <TextField
           fullWidth
