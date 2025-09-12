@@ -66,6 +66,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       device: null,
       routeInfo: null,
     });
+    const [userLocation, setUserLocation] = useState<{
+      lat: number;
+      lng: number;
+    } | null>(null);
+    const [locationError, setLocationError] = useState("");
     const [mapLoaded, setMapLoaded] = useState(false);
     const [mapError, setMapError] = useState("");
     const [geofences, setGeofences] = useState<Geofence[]>([]);
@@ -82,7 +87,68 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       clearNavigation: () => {
         clearRoute();
       },
+      getUserLocation: () => {
+        return getUserCurrentLocation();
+      },
     }));
+
+    // 获取用户当前位置
+    const getUserCurrentLocation = useCallback((): Promise<{
+      lat: number;
+      lng: number;
+    }> => {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          const error = "浏览器不支持地理位置定位";
+          setLocationError(error);
+          reject(new Error(error));
+          return;
+        }
+
+        setLocationError("");
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const location = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setUserLocation(location);
+            resolve(location);
+          },
+          (error) => {
+            let errorMessage = "获取位置失败";
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = "用户拒绝了位置访问权限";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = "无法获取位置信息";
+                break;
+              case error.TIMEOUT:
+                errorMessage = "获取位置超时";
+                break;
+            }
+            setLocationError(errorMessage);
+            reject(new Error(errorMessage));
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000,
+          },
+        );
+      });
+    }, []);
+
+    // 初始化时尝试获取用户位置
+    useEffect(() => {
+      if (mapLoaded) {
+        getUserCurrentLocation().catch(() => {
+          // 静默失败，用户可以选择手动触发
+        });
+      }
+    }, [mapLoaded, getUserCurrentLocation]);
 
     useEffect(() => {
       const scriptId = "amap-script";
@@ -391,9 +457,26 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         routePolylineRef.current = null;
       }
 
-      // 获取当前位置（这里使用地图中心点作为起点，实际应用中可能需要获取用户真实位置）
-      const mapCenter = mapInstanceRef.current.getCenter();
-      const startPoint = `${mapCenter.lng},${mapCenter.lat}`;
+      let startPoint: string;
+
+      // 优先使用用户真实位置，如果没有则使用地图中心点
+      if (userLocation) {
+        startPoint = `${userLocation.lng},${userLocation.lat}`;
+        console.log("使用用户真实位置作为起点:", startPoint);
+      } else {
+        // 尝试获取用户位置
+        try {
+          const location = await getUserCurrentLocation();
+          startPoint = `${location.lng},${location.lat}`;
+          console.log("成功获取用户位置作为起点:", startPoint);
+        } catch (error) {
+          // 获取位置失败，使用地图中心点
+          const mapCenter = mapInstanceRef.current.getCenter();
+          startPoint = `${mapCenter.lng},${mapCenter.lat}`;
+          console.log("使用地图中心点作为起点:", startPoint);
+        }
+      }
+
       const endPoint = `${device.longitude},${device.latitude}`;
 
       try {
@@ -816,6 +899,17 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
                 {navigationInfo.routeInfo.tolls > 0 && (
                   <div>收费: {navigationInfo.routeInfo.tolls} 元</div>
                 )}
+                {userLocation && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#888",
+                      marginTop: "8px",
+                    }}
+                  >
+                    🎯 从您的位置出发
+                  </div>
+                )}
               </div>
 
               <div
@@ -833,6 +927,26 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               </div>
             </div>
           )}
+
+        {/* 位置获取状态提示 */}
+        {locationError && (
+          <div
+            style={{
+              position: "absolute",
+              top: "20px",
+              left: "20px",
+              background: "#ffebee",
+              color: "#c62828",
+              padding: "8px 12px",
+              borderRadius: "4px",
+              fontSize: "12px",
+              zIndex: 1000,
+              maxWidth: "300px",
+            }}
+          >
+            ⚠️ {locationError}
+          </div>
+        )}
       </div>
     );
   },
