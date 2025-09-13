@@ -134,3 +134,52 @@ func UpdateDeviceStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, device)
 }
+
+func UpdateDevice(c *gin.Context) {
+	id := c.Param("id")
+	userID := c.MustGet("userID").(uint)
+
+	var input struct {
+		Name      string  `json:"name"`
+		Topic     string  `json:"topic"`
+		GroupID   *uint   `json:"group_id"`
+		Longitude float64 `json:"longitude"`
+		Latitude  float64 `json:"latitude"`
+		Address   string  `json:"address"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var device models.Device
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&device).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
+		return
+	}
+
+	// Update only the fields that are provided
+	if input.Name != "" {
+		device.Name = input.Name
+	}
+	if input.Topic != "" {
+		device.Topic = input.Topic
+	}
+	if input.GroupID != nil {
+		device.GroupID = input.GroupID
+	}
+	if input.Longitude != 0 {
+		device.Longitude = input.Longitude
+	}
+	if input.Latitude != 0 {
+		device.Latitude = input.Latitude
+	}
+	if input.Address != "" {
+		device.Address = input.Address
+	}
+
+	database.DB.Save(&device)
+
+	c.JSON(http.StatusOK, device)
+}

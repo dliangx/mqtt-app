@@ -42,6 +42,7 @@ func main() {
 			// Device routes
 			auth.GET("/devices", controllers.GetDevices)
 			auth.POST("/devices", controllers.CreateDevice)
+			auth.PUT("/devices/:id", controllers.UpdateDevice)
 			auth.DELETE("/devices/:id", controllers.DeleteDevice)
 			auth.PUT("/devices/:id/location", controllers.UpdateDeviceLocation)
 			auth.PUT("/devices/:id/status", controllers.UpdateDeviceStatus)

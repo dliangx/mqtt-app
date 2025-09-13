@@ -65,6 +65,18 @@ export const apiService = {
 
   deleteDevice: (id: number) => api.delete<ApiResponse>(`/devices/${id}`),
 
+  updateDevice: (
+    id: number,
+    deviceData: {
+      name?: string;
+      topic?: string;
+      group_id?: number;
+      longitude?: number;
+      latitude?: number;
+      address?: string;
+    }
+  ) => api.put<ApiResponse<Device>>(`/devices/${id}`, deviceData),
+
   updateDeviceLocation: (
     id: number,
     locationData: {

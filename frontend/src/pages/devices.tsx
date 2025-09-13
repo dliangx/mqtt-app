@@ -56,6 +56,7 @@ export default function DevicesPage() {
   const [addDeviceDialog, setAddDeviceDialog] = useState(false);
   const [addGroupDialog, setAddGroupDialog] = useState(false);
   const [editGroupDialog, setEditGroupDialog] = useState(false);
+  const [editDeviceDialog, setEditDeviceDialog] = useState(false);
 
   // Form state
   const [selectedGroup, setSelectedGroup] = useState<DeviceGroup | null>(null);
@@ -71,6 +72,8 @@ export default function DevicesPage() {
     name: '',
     description: '',
   });
+
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
   const fetchDeviceGroups = useCallback(async () => {
     try {
@@ -160,6 +163,49 @@ export default function DevicesPage() {
       console.error('Failed to add device:', err);
       enqueueSnackbar('添加设备失败', { variant: 'error' });
     }
+  };
+
+  const handleEditDevice = async () => {
+    if (!editingDevice) return;
+
+    try {
+      await apiService.updateDevice(editingDevice.id, {
+        name: newDevice.name,
+        topic: newDevice.topic,
+        group_id: newDevice.group_id,
+        longitude: newDevice.longitude,
+        latitude: newDevice.latitude,
+        address: newDevice.address,
+      });
+      setEditDeviceDialog(false);
+      setEditingDevice(null);
+      setNewDevice({
+        name: '',
+        topic: '',
+        group_id: undefined,
+        longitude: 0,
+        latitude: 0,
+        address: '',
+      });
+      enqueueSnackbar('设备更新成功', { variant: 'success' });
+      fetchDevices();
+    } catch (err) {
+      console.error('Failed to update device:', err);
+      enqueueSnackbar('更新设备失败', { variant: 'error' });
+    }
+  };
+
+  const handleOpenEditDevice = (device: Device) => {
+    setEditingDevice(device);
+    setNewDevice({
+      name: device.name,
+      topic: device.topic,
+      group_id: device.group_id,
+      longitude: device.longitude,
+      latitude: device.latitude,
+      address: device.address,
+    });
+    setEditDeviceDialog(true);
   };
 
   const handleDeleteDevice = async (id: number) => {
@@ -355,7 +401,11 @@ export default function DevicesPage() {
                     <TableCell>
                       <Box display="flex" gap={1}>
                         <Tooltip title="编辑设备">
-                          <IconButton size="small" color="primary">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleOpenEditDevice(device)}
+                          >
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -472,6 +522,109 @@ export default function DevicesPage() {
               disabled={!newDevice.name || !newDevice.topic}
             >
               添加
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Edit Device Dialog */}
+        <Dialog
+          open={editDeviceDialog}
+          onClose={() => {
+            setEditDeviceDialog(false);
+            setEditingDevice(null);
+            setNewDevice({
+              name: '',
+              topic: '',
+              group_id: undefined,
+              longitude: 0,
+              latitude: 0,
+              address: '',
+            });
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>编辑设备</DialogTitle>
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <TextField
+                label="设备名称"
+                value={newDevice.name}
+                onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })}
+                required
+              />
+              <TextField
+                label="设备 Topic"
+                value={newDevice.topic}
+                onChange={(e) => setNewDevice({ ...newDevice, topic: e.target.value })}
+                required
+              />
+              <TextField
+                select
+                label="设备组"
+                value={newDevice.group_id || ''}
+                onChange={(e) =>
+                  setNewDevice({
+                    ...newDevice,
+                    group_id: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
+                }
+              >
+                <MenuItem value="">未分组</MenuItem>
+                {deviceGroups.map((group) => (
+                  <MenuItem key={group.id} value={group.id}>
+                    {group.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="经度"
+                type="number"
+                value={newDevice.longitude}
+                onChange={(e) =>
+                  setNewDevice({ ...newDevice, longitude: parseFloat(e.target.value) || 0 })
+                }
+              />
+              <TextField
+                label="纬度"
+                type="number"
+                value={newDevice.latitude}
+                onChange={(e) =>
+                  setNewDevice({ ...newDevice, latitude: parseFloat(e.target.value) || 0 })
+                }
+              />
+              <TextField
+                label="地址"
+                value={newDevice.address}
+                onChange={(e) => setNewDevice({ ...newDevice, address: e.target.value })}
+                multiline
+                rows={2}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setEditDeviceDialog(false);
+                setEditingDevice(null);
+                setNewDevice({
+                  name: '',
+                  topic: '',
+                  group_id: undefined,
+                  longitude: 0,
+                  latitude: 0,
+                  address: '',
+                });
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleEditDevice}
+              variant="contained"
+              disabled={!newDevice.name || !newDevice.topic}
+            >
+              保存
             </Button>
           </DialogActions>
         </Dialog>
