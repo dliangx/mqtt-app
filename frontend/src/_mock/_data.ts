@@ -105,6 +105,41 @@ export const _langs = [
     icon: '/assets/icons/flags/ic-flag-en.svg',
   },
   {
+    value: 'zh',
+    label: '中文',
+    icon: '/assets/icons/flags/ic-flag-cn.svg',
+  },
+  {
+    value: 'es',
+    label: 'Español',
+    icon: '/assets/icons/flags/ic-flag-es.svg',
+  },
+  {
+    value: 'pt',
+    label: 'Português',
+    icon: '/assets/icons/flags/ic-flag-pt.svg',
+  },
+  {
+    value: 'ru',
+    label: 'Русский',
+    icon: '/assets/icons/flags/ic-flag-ru.svg',
+  },
+  {
+    value: 'ja',
+    label: '日本語',
+    icon: '/assets/icons/flags/ic-flag-jp.svg',
+  },
+  {
+    value: 'ko',
+    label: '한국어',
+    icon: '/assets/icons/flags/ic-flag-kr.svg',
+  },
+  {
+    value: 'ar',
+    label: 'العربية',
+    icon: '/assets/icons/flags/ic-flag-sa.svg',
+  },
+  {
     value: 'de',
     label: 'German',
     icon: '/assets/icons/flags/ic-flag-de.svg',
@@ -113,6 +148,11 @@ export const _langs = [
     value: 'fr',
     label: 'French',
     icon: '/assets/icons/flags/ic-flag-fr.svg',
+  },
+  {
+    value: 'it',
+    label: 'Italiano',
+    icon: '/assets/icons/flags/ic-flag-it.svg',
   },
 ];
 

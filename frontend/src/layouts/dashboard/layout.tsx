@@ -7,7 +7,7 @@ import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 
-import { _notifications } from 'src/_mock';
+import { _langs, _notifications } from 'src/_mock';
 
 import { ThemeToggle } from 'src/components/theme-toggle';
 
@@ -22,6 +22,7 @@ import { MenuButton } from '../components/menu-button';
 import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';
 import { AccountPopover } from '../components/account-popover';
+import { LanguagePopover } from '../components/language-popover';
 import { NotificationsPopover } from '../components/notifications-popover';
 
 import type { MainSectionProps } from '../core/main-section';
@@ -84,6 +85,9 @@ export function DashboardLayout({
 
           {/** @slot Notifications popover */}
           <NotificationsPopover data={_notifications} />
+
+          {/** @slot Language popover */}
+          <LanguagePopover data={_langs} />
 
           {/** @slot Account drawer */}
           <AccountPopover data={_account} />
