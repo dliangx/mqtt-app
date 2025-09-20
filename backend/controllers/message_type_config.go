@@ -1,9 +1,14 @@
 package controllers
 
 import (
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -250,10 +255,281 @@ func parseMessageData(formatStr, rawData string) (models.ParseResult, error) {
 		Timestamp: time.Now(),
 	}
 
-	// 这里实现具体的解析逻辑
-	// 根据format配置解析rawData
+	// 根据编码类型解码原始数据
+	var decodedData []byte
+	var err error
+	switch format.Encoding {
+	case "hex":
+		decodedData, err = hex.DecodeString(rawData)
+	case "base64":
+		decodedData, err = base64.StdEncoding.DecodeString(rawData)
+	case "ascii", "":
+		decodedData = []byte(rawData)
+	default:
+		return models.ParseResult{Success: false, Error: "Unsupported encoding: " + format.Encoding}, nil
+	}
+
+	if err != nil {
+		return models.ParseResult{Success: false, Error: "Failed to decode data: " + err.Error()}, err
+	}
+
+	// 解析报文头字段
+	currentOffset := 0
+	for _, field := range format.Header {
+		value, newOffset, err := parseField(decodedData, currentOffset, field)
+		if err != nil {
+			return models.ParseResult{Success: false, Error: "Failed to parse header field '" + field.Name + "': " + err.Error()}, err
+		}
+		result.Fields[field.Name] = value
+		currentOffset = newOffset
+	}
+
+	// 解析长度字段（如果存在）
+	if format.Length != nil {
+		lengthValue, newOffset, err := parseField(decodedData, currentOffset, *format.Length)
+		if err != nil {
+			return models.ParseResult{Success: false, Error: "Failed to parse length field: " + err.Error()}, err
+		}
+		currentOffset = newOffset
+
+		// 根据长度字段调整数据范围
+		if length, ok := lengthValue.(int64); ok {
+			// 确保有足够的数据
+			if currentOffset+int(length) > len(decodedData) {
+				return models.ParseResult{Success: false, Error: "Insufficient data for specified length"}, nil
+			}
+			decodedData = decodedData[:currentOffset+int(length)]
+		}
+	}
+
+	// 解析报文体字段
+	for _, field := range format.Body {
+		value, newOffset, err := parseField(decodedData, currentOffset, field)
+		if err != nil {
+			return models.ParseResult{Success: false, Error: "Failed to parse body field '" + field.Name + "': " + err.Error()}, err
+		}
+		result.Fields[field.Name] = value
+		currentOffset = newOffset
+	}
+
+	// 解析报文尾字段
+	for _, field := range format.Footer {
+		value, newOffset, err := parseField(decodedData, currentOffset, field)
+		if err != nil {
+			return models.ParseResult{Success: false, Error: "Failed to parse footer field '" + field.Name + "': " + err.Error()}, err
+		}
+		result.Fields[field.Name] = value
+		currentOffset = newOffset
+	}
+
+	// 解析校验和字段（如果存在）
+	if format.Checksum != nil {
+		checksumValue, _, err := parseField(decodedData, currentOffset, *format.Checksum)
+		if err != nil {
+			return models.ParseResult{Success: false, Error: "Failed to parse checksum field: " + err.Error()}, err
+		}
+		result.Fields[format.Checksum.Name] = checksumValue
+
+		// 验证校验和
+		if !validateChecksum(decodedData, currentOffset, *format.Checksum, checksumValue) {
+			result.Success = false
+			result.Error = "Checksum validation failed"
+			return result, nil
+		}
+	}
 
 	return result, nil
+}
+
+// parseField 解析单个字段
+func parseField(data []byte, offset int, field models.FieldDefinition) (interface{}, int, error) {
+	// 检查偏移量是否有效
+	if offset < 0 || offset >= len(data) {
+		return nil, offset, fmt.Errorf("invalid offset: %d", offset)
+	}
+
+	// 检查是否有足够的数据
+	if offset+field.Length > len(data) {
+		return nil, offset, fmt.Errorf("insufficient data for field '%s' (need %d bytes, have %d)", field.Name, field.Length, len(data)-offset)
+	}
+
+	fieldData := data[offset : offset+field.Length]
+	newOffset := offset + field.Length
+
+	switch field.Type {
+	case "int8":
+		value := int8(fieldData[0])
+		if !field.Signed {
+			value = int8(uint8(fieldData[0]))
+		}
+		return value, newOffset, nil
+
+	case "uint8":
+		return uint8(fieldData[0]), newOffset, nil
+
+	case "int16":
+		var value int16
+		if field.Endian == "big" {
+			value = int16(binary.BigEndian.Uint16(fieldData))
+		} else {
+			value = int16(binary.LittleEndian.Uint16(fieldData))
+		}
+		if !field.Signed {
+			if field.Endian == "big" {
+				value = int16(binary.BigEndian.Uint16(fieldData))
+			} else {
+				value = int16(binary.LittleEndian.Uint16(fieldData))
+			}
+		} else {
+			// For signed values, we need to handle two's complement
+			if field.Endian == "big" {
+				value = int16(binary.BigEndian.Uint16(fieldData))
+			} else {
+				value = int16(binary.LittleEndian.Uint16(fieldData))
+			}
+		}
+		return value, newOffset, nil
+
+	case "uint16":
+		if field.Endian == "big" {
+			return binary.BigEndian.Uint16(fieldData), newOffset, nil
+		}
+		return binary.LittleEndian.Uint16(fieldData), newOffset, nil
+
+	case "int32":
+		var value int32
+		if field.Endian == "big" {
+			value = int32(binary.BigEndian.Uint32(fieldData))
+		} else {
+			value = int32(binary.LittleEndian.Uint32(fieldData))
+		}
+		if !field.Signed {
+			if field.Endian == "big" {
+				value = int32(binary.BigEndian.Uint32(fieldData))
+			} else {
+				value = int32(binary.LittleEndian.Uint32(fieldData))
+			}
+		} else {
+			// For signed values, we need to handle two's complement
+			if field.Endian == "big" {
+				value = int32(binary.BigEndian.Uint32(fieldData))
+			} else {
+				value = int32(binary.LittleEndian.Uint32(fieldData))
+			}
+		}
+		return value, newOffset, nil
+
+	case "uint32":
+		if field.Endian == "big" {
+			return binary.BigEndian.Uint32(fieldData), newOffset, nil
+		}
+		return binary.LittleEndian.Uint32(fieldData), newOffset, nil
+
+	case "float32":
+		var bits uint32
+		if field.Endian == "big" {
+			bits = binary.BigEndian.Uint32(fieldData)
+		} else {
+			bits = binary.LittleEndian.Uint32(fieldData)
+		}
+		value := math.Float32frombits(bits)
+		if field.Decimals > 0 {
+			// 应用小数位数
+			value = float32(int64(value*float32(math.Pow10(field.Decimals)))) / float32(math.Pow10(field.Decimals))
+		}
+		return value, newOffset, nil
+
+	case "float64":
+		var bits uint64
+		if field.Endian == "big" {
+			bits = binary.BigEndian.Uint64(fieldData)
+		} else {
+			bits = binary.LittleEndian.Uint64(fieldData)
+		}
+		value := math.Float64frombits(bits)
+		if field.Decimals > 0 {
+			// 应用小数位数
+			value = float64(int64(value*math.Pow10(field.Decimals))) / math.Pow10(field.Decimals)
+		}
+		return value, newOffset, nil
+
+	case "string":
+		// 去除字符串末尾的空字符
+		str := string(fieldData)
+		// 找到第一个空字符
+		if idx := strings.IndexByte(str, 0); idx != -1 {
+			str = str[:idx]
+		}
+
+		return strings.TrimSpace(str), newOffset, nil
+
+	case "bytes":
+		return fieldData, newOffset, nil
+
+	default:
+		return nil, newOffset, fmt.Errorf("unsupported field type: %s", field.Type)
+	}
+}
+
+// validateChecksum 验证校验和
+func validateChecksum(data []byte, checksumOffset int, checksumField models.FieldDefinition, checksumValue interface{}) bool {
+	// 计算数据的校验和（从开始到校验和字段之前）
+	dataToCheck := data[:checksumOffset]
+
+	// 根据校验和字段类型进行验证
+	switch checksumField.Type {
+	case "uint8":
+		expected, ok := checksumValue.(uint8)
+		if !ok {
+			return false
+		}
+		return calculateChecksum8(dataToCheck) == expected
+
+	case "uint16":
+		expected, ok := checksumValue.(uint16)
+		if !ok {
+			return false
+		}
+		return calculateChecksum16(dataToCheck) == expected
+
+	case "uint32":
+		expected, ok := checksumValue.(uint32)
+		if !ok {
+			return false
+		}
+		return calculateChecksum32(dataToCheck) == expected
+
+	default:
+		// 对于其他类型，暂时不支持校验和验证
+		return true
+	}
+}
+
+// calculateChecksum8 计算8位校验和
+func calculateChecksum8(data []byte) uint8 {
+	var sum uint8
+	for _, b := range data {
+		sum += b
+	}
+	return sum
+}
+
+// calculateChecksum16 计算16位校验和
+func calculateChecksum16(data []byte) uint16 {
+	var sum uint16
+	for _, b := range data {
+		sum += uint16(b)
+	}
+	return sum
+}
+
+// calculateChecksum32 计算32位校验和
+func calculateChecksum32(data []byte) uint32 {
+	var sum uint32
+	for _, b := range data {
+		sum += uint32(b)
+	}
+	return sum
 }
 
 // GetDefaultMessageTypeConfig 获取用户的默认消息类型配置
