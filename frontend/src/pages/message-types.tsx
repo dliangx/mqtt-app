@@ -135,11 +135,7 @@ export default function MessageTypesPage() {
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
-            <IconButton
-              size="small"
-              onClick={handleCloseDialog}
-              sx={{ mr: 1 }}
-            >
+            <IconButton size="small" onClick={handleCloseDialog} sx={{ mr: 1 }}>
               <ArrowBackIcon />
             </IconButton>
             <SettingsIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -169,17 +165,11 @@ export default function MessageTypesPage() {
             <SettingsIcon sx={{ fontSize: 32, color: 'primary.main' }} />
             <Box>
               <Typography variant="h4">消息类型配置</Typography>
-
             </Box>
           </Box>
 
           {viewMode === 'list' && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreate}
-              size="large"
-            >
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate} size="large">
               新建配置
             </Button>
           )}

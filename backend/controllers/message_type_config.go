@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,7 +21,7 @@ func GetMessageTypeConfigs(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, configs)
+	c.JSON(http.StatusOK, gin.H{"data": configs})
 }
 
 // GetMessageTypeConfig 获取单个消息类型配置
@@ -34,7 +35,7 @@ func GetMessageTypeConfig(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, config)
+	c.JSON(http.StatusOK, gin.H{"data": config})
 }
 
 // CreateMessageTypeConfig 创建消息类型配置
@@ -42,11 +43,11 @@ func CreateMessageTypeConfig(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var input struct {
-		Name        string          `json:"name" binding:"required"`
-		Description string          `json:"description"`
-		Protocol    string          `json:"protocol" binding:"required"`
-		Format      json.RawMessage `json:"format" binding:"required"`
-		IsDefault   bool            `json:"is_default"`
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		Protocol    string `json:"protocol" binding:"required"`
+		Format      string `json:"format" binding:"required"`
+		IsDefault   bool   `json:"is_default"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -56,7 +57,8 @@ func CreateMessageTypeConfig(c *gin.Context) {
 
 	// 验证格式是否为有效的JSON
 	var format models.MessageFormat
-	if err := json.Unmarshal(input.Format, &format); err != nil {
+	if err := json.Unmarshal([]byte(input.Format), &format); err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid format JSON"})
 		return
 	}
@@ -85,7 +87,7 @@ func CreateMessageTypeConfig(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, config)
+	c.JSON(http.StatusOK, gin.H{"data": config})
 }
 
 // UpdateMessageTypeConfig 更新消息类型配置
@@ -148,7 +150,7 @@ func UpdateMessageTypeConfig(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, config)
+	c.JSON(http.StatusOK, gin.H{"data": config})
 }
 
 // DeleteMessageTypeConfig 删除消息类型配置
@@ -228,8 +230,19 @@ func ParseMessageData(c *gin.Context) {
 // parseMessageData 解析消息数据的辅助函数
 func parseMessageData(formatStr, rawData string) (models.ParseResult, error) {
 	var format models.MessageFormat
-	if err := json.Unmarshal([]byte(formatStr), &format); err != nil {
-		return models.ParseResult{Success: false, Error: "Invalid format configuration"}, err
+	// 由于 formatStr 是从数据库读取的 JSON 字符串，需要先检查它是否是有效的 JSON
+	// 如果是字符串形式的 JSON，需要先解析它
+	if formatStr[0] == '"' && formatStr[len(formatStr)-1] == '"' {
+		// 如果是引号包围的字符串，先去除引号
+		unquotedStr := formatStr[1 : len(formatStr)-1]
+		if err := json.Unmarshal([]byte(unquotedStr), &format); err != nil {
+			return models.ParseResult{Success: false, Error: "Invalid format configuration"}, err
+		}
+	} else {
+		// 直接是 JSON 对象
+		if err := json.Unmarshal([]byte(formatStr), &format); err != nil {
+			return models.ParseResult{Success: false, Error: "Invalid format configuration"}, err
+		}
 	}
 
 	result := models.ParseResult{
