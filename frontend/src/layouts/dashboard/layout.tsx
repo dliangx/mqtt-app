@@ -50,7 +50,9 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const theme = useTheme();
 
-  const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
+  const nav = useBoolean();
+
+  const navCollapsed = useBoolean();
 
   const renderHeader = () => {
     const headerSlotProps: HeaderSectionProps['slotProps'] = {
@@ -69,10 +71,16 @@ export function DashboardLayout({
         <>
           {/** @slot Nav mobile */}
           <MenuButton
-            onClick={onOpen}
+            onClick={nav.onOpen}
             sx={{ mr: 1, ml: -1, [theme.breakpoints.up(layoutQuery)]: { display: 'none' } }}
           />
-          <NavMobile data={navData} open={open} onClose={onClose} />
+          <NavMobile data={navData} open={nav.value} onClose={nav.onFalse} />
+
+          {/** @slot Nav desktop */}
+          <MenuButton
+            onClick={navCollapsed.onToggle}
+            sx={{ [theme.breakpoints.down(layoutQuery)]: { display: 'none' } }}
+          />
         </>
       ),
       rightArea: (
@@ -120,7 +128,9 @@ export function DashboardLayout({
       /** **************************************
        * @Sidebar
        *************************************** */
-      sidebarSection={<NavDesktop data={navData} layoutQuery={layoutQuery} />}
+      sidebarSection={
+        !navCollapsed.value && <NavDesktop data={navData} layoutQuery={layoutQuery} />
+      }
       /** **************************************
        * @Footer
        *************************************** */
@@ -133,7 +143,7 @@ export function DashboardLayout({
         {
           [`& .${layoutClasses.sidebarContainer}`]: {
             [theme.breakpoints.up(layoutQuery)]: {
-              pl: 'var(--layout-nav-vertical-width)',
+              pl: navCollapsed.value ? 0 : 'var(--layout-nav-vertical-width)',
               transition: theme.transitions.create(['padding-left'], {
                 easing: 'var(--layout-transition-easing)',
                 duration: 'var(--layout-transition-duration)',
