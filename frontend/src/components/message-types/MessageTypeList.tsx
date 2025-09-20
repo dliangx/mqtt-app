@@ -57,7 +57,12 @@ const formatTimestamp = (timestamp: string) =>
 
 // ----------------------------------------------------------------------
 
-export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }: MessageTypeListProps) {
+export default function MessageTypeList({
+  configs,
+  onRefresh,
+  onEdit,
+  onCreate,
+}: MessageTypeListProps) {
   const { enqueueSnackbar } = useSnackbar();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -75,7 +80,7 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
 
   const handleSetDefault = async (config: MessageTypeConfig) => {
     try {
-      await apiService.setDefaultMessageTypeConfig(config.id);
+      await apiService.setDefaultMessageTypeConfig(config.ID);
       enqueueSnackbar('已设置为默认配置', { variant: 'success' });
       onRefresh();
     } catch (err) {
@@ -86,7 +91,7 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
 
   const handleDelete = async (config: MessageTypeConfig) => {
     try {
-      await apiService.deleteMessageTypeConfig(config.id);
+      await apiService.deleteMessageTypeConfig(config.ID);
       enqueueSnackbar('配置已删除', { variant: 'success' });
       onRefresh();
     } catch (err) {
@@ -107,15 +112,11 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
 
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - configs.length) : 0;
 
-  const paginatedConfigs = configs.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const paginatedConfigs = configs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Box>
       {/* Action Bar */}
-
 
       {/* Table */}
       <TableContainer component={Card}>
@@ -132,7 +133,7 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
           </TableHead>
           <TableBody>
             {paginatedConfigs.map((config) => (
-              <TableRow key={config.id} hover>
+              <TableRow key={config.ID} hover>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <SettingsIcon fontSize="small" color="action" />
@@ -164,17 +165,12 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
                       icon={<CheckIcon />}
                     />
                   ) : (
-                    <Chip
-                      label="普通"
-                      size="small"
-                      variant="outlined"
-                      color="default"
-                    />
+                    <Chip label="普通" size="small" variant="outlined" color="default" />
                   )}
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {formatTimestamp(config.created_at)}
+                    {formatTimestamp(config.CreatedAt)}
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
@@ -182,17 +178,18 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
                     <Tooltip title="编辑">
                       <IconButton
                         size="small"
-                        onClick={() => onEdit(config)}
+                        onClick={() => {
+                          console.log('Edit button clicked, config:', config);
+                          console.log('Config ID:', config.ID);
+                          onEdit(config);
+                        }}
                         color="primary"
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="更多操作">
-                      <IconButton
-                        size="small"
-                        onClick={(event) => handleOpenMenu(event, config)}
-                      >
+                      <IconButton size="small" onClick={(event) => handleOpenMenu(event, config)}>
                         <MoreIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -209,12 +206,7 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">暂无配置数据</Typography>
-                  <Button
-                    variant="text"
-                    startIcon={<AddIcon />}
-                    onClick={onCreate}
-                    sx={{ mt: 1 }}
-                  >
+                  <Button variant="text" startIcon={<AddIcon />} onClick={onCreate} sx={{ mt: 1 }}>
                     创建第一个配置
                   </Button>
                 </TableCell>
@@ -240,35 +232,37 @@ export default function MessageTypeList({ configs, onRefresh, onEdit, onCreate }
       />
 
       {/* Action Menu */}
-      <Menu
-        anchorEl={actionMenuAnchor}
-        open={Boolean(actionMenuAnchor)}
-        onClose={handleCloseMenu}
-      >
+      <Menu anchorEl={actionMenuAnchor} open={Boolean(actionMenuAnchor)} onClose={handleCloseMenu}>
         {selectedConfig && !selectedConfig.is_default && (
-          <MenuItem onClick={() => {
-            handleSetDefault(selectedConfig);
-            handleCloseMenu();
-          }}>
+          <MenuItem
+            onClick={() => {
+              handleSetDefault(selectedConfig);
+              handleCloseMenu();
+            }}
+          >
             <ListItemIcon>
               <CheckIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>设为默认</ListItemText>
           </MenuItem>
         )}
-        <MenuItem onClick={() => {
-          if (selectedConfig) onEdit(selectedConfig);
-          handleCloseMenu();
-        }}>
+        <MenuItem
+          onClick={() => {
+            if (selectedConfig) onEdit(selectedConfig);
+            handleCloseMenu();
+          }}
+        >
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>编辑配置</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => {
-          if (selectedConfig) handleDelete(selectedConfig);
-          handleCloseMenu();
-        }}>
+        <MenuItem
+          onClick={() => {
+            if (selectedConfig) handleDelete(selectedConfig);
+            handleCloseMenu();
+          }}
+        >
           <ListItemIcon>
             <DeleteIcon fontSize="small" color="error" />
           </ListItemIcon>

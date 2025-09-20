@@ -102,11 +102,11 @@ func UpdateMessageTypeConfig(c *gin.Context) {
 	}
 
 	var input struct {
-		Name        string          `json:"name"`
-		Description string          `json:"description"`
-		Protocol    string          `json:"protocol"`
-		Format      json.RawMessage `json:"format"`
-		IsDefault   bool            `json:"is_default"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Protocol    string `json:"protocol"`
+		Format      string `json:"format"`
+		IsDefault   bool   `json:"is_default"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -115,13 +115,11 @@ func UpdateMessageTypeConfig(c *gin.Context) {
 	}
 
 	// 验证格式是否为有效的JSON（如果提供了）
-	if input.Format != nil {
-		var format models.MessageFormat
-		if err := json.Unmarshal(input.Format, &format); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid format JSON"})
-			return
-		}
-		config.Format = string(input.Format)
+
+	var format models.MessageFormat
+	if err := json.Unmarshal([]byte(input.Format), &format); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid format JSON"})
+		return
 	}
 
 	// 如果设置为默认配置，取消其他默认配置

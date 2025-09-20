@@ -162,7 +162,11 @@ export default function MessageTypeForm({ config, onSave, onCancel, mode }: Mess
       if (mode === 'create') {
         result = await apiService.createMessageTypeConfig(configData);
       } else {
-        result = await apiService.updateMessageTypeConfig(config!.id, configData);
+        console.log('Editing config with ID:', config?.ID);
+        if (!config?.ID) {
+          throw new Error('配置ID不存在，无法更新');
+        }
+        result = await apiService.updateMessageTypeConfig(config.ID, configData);
       }
 
       enqueueSnackbar(`配置${mode === 'create' ? '创建' : '更新'}成功`, { variant: 'success' });

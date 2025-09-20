@@ -1,13 +1,14 @@
 export interface MessageTypeConfig {
-  id: number;
+  ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string;
   user_id: number;
   name: string;
   description: string;
   protocol: string;
   format: MessageFormat | string;
   is_default: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface MessageFormat {
