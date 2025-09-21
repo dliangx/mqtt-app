@@ -9,6 +9,9 @@ import { apiService } from 'src/services/api';
 
 import { useFullscreen } from 'src/hooks/use-fullscreen';
 
+// 地图源类型定义
+type MapSource = 'amap' | 'osm';
+
 import GeofenceToolbar from './GeofenceToolbar';
 
 interface AMapComponentProps {
@@ -37,10 +40,11 @@ const handleMapError = (error: unknown, context = ''): boolean => {
   return false;
 };
 
-// 扩展 Window 接口以包含 AMap 类型
+// 扩展 Window 接口以包含 AMap 和 Leaflet 类型
 declare global {
   interface Window {
     AMap: any;
+    L: any;
   }
 }
 
@@ -69,6 +73,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const [geofences, setGeofences] = useState<Geofence[]>([]);
     const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [currentMapSource, setCurrentMapSource] = useState<MapSource>('amap');
 
     const { fullscreen, elementRef, toggleFullscreen } = useFullscreen();
 
@@ -735,14 +740,76 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }
     }, [selectedGeofence, isDrawing]);
 
+    // 初始化 OpenStreetMap
+    useEffect(() => {
+      if (currentMapSource === 'osm' && mapLoaded) {
+        // 动态加载 Leaflet 用于 OpenStreetMap
+        const loadOpenStreetMap = async () => {
+          try {
+            // 加载 Leaflet CSS
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+            link.crossOrigin = '';
+            document.head.appendChild(link);
+
+            // 加载 Leaflet JS
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+            script.crossOrigin = '';
+            script.onload = () => {
+              const L = window.L;
+              if (L && document.getElementById('openstreetmap-container')) {
+                const osmMap = L.map('openstreetmap-container').setView([39.90923, 116.397428], 10);
+
+                // 添加 OpenStreetMap 图层
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '&copy; OpenStreetMap contributors',
+                  maxZoom: 19,
+                }).addTo(osmMap);
+
+                // 在这里可以添加设备标记等其他功能
+                console.log('OpenStreetMap 初始化完成');
+              }
+            };
+            document.head.appendChild(script);
+          } catch (error) {
+            console.error('加载 OpenStreetMap 失败:', error);
+          }
+        };
+
+        loadOpenStreetMap();
+      }
+    }, [currentMapSource, mapLoaded]);
+
     return (
       <div style={{ position: 'relative', height }} ref={elementRef}>
+        {/* OpenStreetMap 容器 */}
+        {currentMapSource === 'osm' && (
+          <div
+            id="openstreetmap-container"
+            style={{
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 1,
+            }}
+          />
+        )}
+
+        {/* 高德地图容器 */}
         <div
           ref={mapRef}
           style={{
             width: '100%',
             height: '100%',
             overflow: 'hidden',
+            display: currentMapSource === 'amap' ? 'block' : 'none',
           }}
         />
 
@@ -770,6 +837,35 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           title={fullscreen ? '退出全屏' : '进入全屏'}
         >
           ⛶
+        </button>
+
+        {/* 地图源切换按钮 */}
+        <button
+          onClick={() => {
+            const newSource: MapSource = currentMapSource === 'amap' ? 'osm' : 'amap';
+            setCurrentMapSource(newSource);
+          }}
+          style={{
+            position: 'absolute',
+            top: 100,
+            left: 10,
+            zIndex: 1000,
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#2c3e50',
+            cursor: 'pointer',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          }}
+          title={`切换到${currentMapSource === 'amap' ? 'OpenStreetMap' : '高德地图'}`}
+        >
+          {currentMapSource === 'amap' ? '🌍' : '🇨🇳'}
         </button>
 
         {/* 地理围栏工具栏 */}
