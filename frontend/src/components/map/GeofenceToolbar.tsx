@@ -162,11 +162,13 @@ const GeofenceToolbar: React.FC<GeofenceToolbarProps> = ({
             width: 36,
             height: 36,
             minWidth: 36,
+            borderRadius: '50%',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
             backgroundColor: expanded
               ? 'transparent'
               : isDrawing
-                ? 'rgba(255, 193, 7, 0.9)'
-                : 'rgba(255, 255, 255, 0.9)',
+                ? 'rgba(255, 193, 7, 0.8)'
+                : 'rgba(255, 255, 255, 0.8)',
             '&:hover': {
               backgroundColor: isDrawing ? 'rgba(255, 193, 7, 0.95)' : 'rgba(255, 255, 255, 0.95)',
             },

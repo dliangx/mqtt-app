@@ -7,6 +7,8 @@ import { checkGeofenceViolations, defaultGeofenceStyle, generateId } from 'src/u
 
 import { apiService } from 'src/services/api';
 
+import { useFullscreen } from 'src/hooks/use-fullscreen';
+
 import GeofenceToolbar from './GeofenceToolbar';
 
 interface AMapComponentProps {
@@ -67,6 +69,8 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const [geofences, setGeofences] = useState<Geofence[]>([]);
     const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+
+    const { fullscreen, elementRef, toggleFullscreen } = useFullscreen();
 
     // 暴露导航方法给父组件
     React.useImperativeHandle(ref, () => ({
@@ -732,7 +736,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     }, [selectedGeofence, isDrawing]);
 
     return (
-      <div style={{ position: 'relative', height }}>
+      <div style={{ position: 'relative', height }} ref={elementRef}>
         <div
           ref={mapRef}
           style={{
@@ -741,6 +745,32 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             overflow: 'hidden',
           }}
         />
+
+        {/* 全屏按钮 */}
+        <button
+          onClick={toggleFullscreen}
+          style={{
+            position: 'absolute',
+            top: 56,
+            left: 10,
+            zIndex: 1000,
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: 'gray',
+            cursor: 'pointer',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          }}
+          title={fullscreen ? '退出全屏' : '进入全屏'}
+        >
+          ⛶
+        </button>
 
         {/* 地理围栏工具栏 */}
         <GeofenceToolbar
