@@ -71,7 +71,6 @@ export function DashboardLayout({
         <>
           {/** @slot Nav mobile */}
           <MenuButton
-            onClick={nav.onOpen}
             sx={{ mr: 1, ml: -1, [theme.breakpoints.up(layoutQuery)]: { display: 'none' } }}
           />
           <NavMobile data={navData} open={nav.value} onClose={nav.onFalse} />
