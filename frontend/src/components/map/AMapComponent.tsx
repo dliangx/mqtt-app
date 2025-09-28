@@ -883,7 +883,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         {!mapLoaded && !mapError && (
           <div
             style={{
-              position: 'absolute',
               top: 0,
               left: 0,
               right: 0,
