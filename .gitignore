@@ -101,3 +101,5 @@ temp/
 
 backend/mqtt-app-linux
 backend/backend
+
+tauri-app/src-tauri/gen/
