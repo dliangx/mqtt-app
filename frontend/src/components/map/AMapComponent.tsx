@@ -10,7 +10,7 @@ import { apiService } from 'src/services/api';
 import { useFullscreen } from 'src/hooks/use-fullscreen';
 
 // 地图源类型定义
-type MapSource = 'amap' | 'osm';
+type MapSource = 'amap' | 'mapbox';
 
 import GeofenceToolbar from './GeofenceToolbar';
 
@@ -40,11 +40,11 @@ const handleMapError = (error: unknown, context = ''): boolean => {
   return false;
 };
 
-// 扩展 Window 接口以包含 AMap 和 Leaflet 类型
+// 扩展 Window 接口以包含 AMap 和 Mapbox 类型
 declare global {
   interface Window {
     AMap: any;
-    L: any;
+    mapboxgl: any;
   }
 }
 
@@ -52,7 +52,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
   ({ devices, onMarkerClick, onGeofenceViolation, height = '400px' }, ref) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
+    const mapboxInstanceRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const mapboxMarkersRef = useRef<any[]>([]);
     const geofencePolygonsRef = useRef<any[]>([]);
     const mouseToolRef = useRef<any>(null);
     const prevDevicesJsonRef = useRef<string>('');
@@ -74,6 +76,13 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentMapSource, setCurrentMapSource] = useState<MapSource>('amap');
+    const [mapViewState, setMapViewState] = useState<{
+      center: [number, number];
+      zoom: number;
+    }>({
+      center: [116.397428, 39.90923],
+      zoom: 10,
+    });
 
     const { fullscreen, elementRef, toggleFullscreen } = useFullscreen();
 
@@ -148,7 +157,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     useEffect(() => {
       const scriptId = 'amap-script';
       if (document.getElementById(scriptId)) {
-        initMap();
+        if (currentMapSource === 'amap') {
+          initMap();
+        }
         return;
       }
 
@@ -159,7 +170,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }&plugin=AMap.MarkerClusterer,AMap.MouseTool,AMap.Polygon,AMap.Circle`;
       script.async = true;
       script.onload = () => {
-        initMap();
+        if (currentMapSource === 'amap') {
+          initMap();
+        }
       };
       script.onerror = () => {
         setMapError('地图脚本加载失败，请检查网络连接');
@@ -172,18 +185,36 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           document.head.removeChild(script);
         }
       };
-    }, []);
+    }, [currentMapSource]);
 
     // 当设备数据变化时更新地图标记和检查围栏违规
     useEffect(() => {
-      if (mapLoaded && window.AMap && mapInstanceRef.current) {
+      if (mapLoaded) {
         const currentDevicesJson = JSON.stringify(devices);
         if (currentDevicesJson !== prevDevicesJsonRef.current) {
           prevDevicesJsonRef.current = currentDevicesJson;
-          updateMarkers(mapInstanceRef.current);
+          if (currentMapSource === 'amap' && window.AMap && mapInstanceRef.current) {
+            updateMarkers(mapInstanceRef.current);
+          } else if (currentMapSource === 'mapbox' && window.mapboxgl) {
+            const mapboxMap = document.querySelector('.mapboxgl-map');
+            if (mapboxMap) {
+              updateMapboxMarkers(mapboxMap);
+            }
+          }
         }
       }
-    }, [devices, mapLoaded, geofences]);
+    }, [devices, mapLoaded, geofences, currentMapSource]);
+
+    // 当切换地图源时清理对应的地图实例
+    useEffect(() => {
+      if (currentMapSource === 'amap' && mapboxInstanceRef.current) {
+        // 切换到高德地图时清理Mapbox
+        cleanupMapbox();
+      } else if (currentMapSource === 'mapbox' && mapInstanceRef.current) {
+        // 切换到Mapbox时清理高德地图
+        cleanupAmap();
+      }
+    }, [currentMapSource]);
 
     // 组件卸载时清理
     useEffect(
@@ -193,7 +224,27 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       []
     );
 
-    const cleanupMap = () => {
+    const cleanupMapbox = () => {
+      if (mapboxMarkersRef.current.length > 0) {
+        mapboxMarkersRef.current.forEach((marker) => {
+          if (marker && marker.remove) {
+            marker.remove();
+          }
+        });
+        mapboxMarkersRef.current = [];
+      }
+
+      if (mapboxInstanceRef.current) {
+        try {
+          mapboxInstanceRef.current.remove();
+        } catch (error) {
+          console.error('Error removing Mapbox instance:', error);
+        }
+        mapboxInstanceRef.current = null;
+      }
+    };
+
+    const cleanupAmap = () => {
       if (markersRef.current.length > 0) {
         markersRef.current.forEach((marker) => {
           if (marker && marker.setMap) {
@@ -226,6 +277,20 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         routePolylineRef.current = null;
       }
 
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.destroy();
+        } catch (error) {
+          console.error('Error destroying AMap instance:', error);
+        }
+        mapInstanceRef.current = null;
+      }
+    };
+
+    const cleanupMap = () => {
+      cleanupAmap();
+      cleanupMapbox();
+
       // 关闭导航信息面板
       setNavigationInfo({
         visible: false,
@@ -241,10 +306,30 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           return;
         }
 
+        // 如果地图实例已存在，先销毁
+        if (mapInstanceRef.current) {
+          try {
+            mapInstanceRef.current.destroy();
+          } catch (error) {
+            console.error('Error destroying existing map:', error);
+          }
+          mapInstanceRef.current = null;
+        }
+
         const map = new window.AMap.Map(mapRef.current, {
-          zoom: 10,
-          center: [116.397428, 39.90923],
+          zoom: mapViewState.zoom,
+          center: mapViewState.center,
           viewMode: '2D',
+        });
+
+        // 监听地图视角变化
+        map.on('moveend', () => {
+          const center = map.getCenter();
+          const zoom = map.getZoom();
+          setMapViewState({
+            center: [center.lng, center.lat],
+            zoom: zoom,
+          });
         });
 
         // 初始化鼠标工具
@@ -573,6 +658,19 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }
     };
 
+    const getStatusText = (status: string): string => {
+      switch (status) {
+        case 'online':
+          return '在线';
+        case 'offline':
+          return '离线';
+        case 'warning':
+          return '警告';
+        default:
+          return status;
+      }
+    };
+
     const drawGeofences = () => {
       const map = mapInstanceRef.current;
       if (!map) return;
@@ -740,67 +838,219 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }
     }, [selectedGeofence, isDrawing]);
 
-    // 初始化 OpenStreetMap
+    // 初始化 Mapbox
     useEffect(() => {
-      if (currentMapSource === 'osm' && mapLoaded) {
-        // 动态加载 Leaflet 用于 OpenStreetMap
-        const loadOpenStreetMap = async () => {
+      if (currentMapSource === 'mapbox' && mapLoaded) {
+        // 动态加载 Mapbox GL JS
+        const loadMapbox = async () => {
           try {
-            // 加载 Leaflet CSS
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-            link.crossOrigin = '';
-            document.head.appendChild(link);
-
-            // 加载 Leaflet JS
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-            script.crossOrigin = '';
-            script.onload = () => {
-              const L = window.L;
-              if (L && document.getElementById('openstreetmap-container')) {
-                const osmMap = L.map('openstreetmap-container').setView([39.90923, 116.397428], 10);
-
-                // 添加 OpenStreetMap 图层
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                  attribution: '&copy; OpenStreetMap contributors',
-                  maxZoom: 19,
-                }).addTo(osmMap);
-
-                // 在这里可以添加设备标记等其他功能
-                console.log('OpenStreetMap 初始化完成');
+            // 检查是否已加载 Mapbox
+            if (mapboxInstanceRef.current) {
+              // Mapbox 已存在，只需更新标记和确保正确显示
+              const container = document.getElementById('mapbox-container');
+              if (container) {
+                container.style.display = 'block';
               }
-            };
-            document.head.appendChild(script);
+              // 同步视角
+              mapboxInstanceRef.current.setCenter(mapViewState.center);
+              mapboxInstanceRef.current.setZoom(mapViewState.zoom);
+              mapboxInstanceRef.current.resize();
+              updateMapboxMarkers(mapboxInstanceRef.current);
+              return;
+            }
+
+            // 检查是否已加载 Mapbox CSS
+            if (!document.querySelector('link[href*="mapbox-gl.css"]')) {
+              const link = document.createElement('link');
+              link.rel = 'stylesheet';
+              link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css';
+              link.crossOrigin = '';
+              document.head.appendChild(link);
+            }
+
+            // 检查是否已加载 Mapbox JS
+            if (window.mapboxgl) {
+              // Mapbox JS 已加载，直接初始化地图
+              initMapboxMap();
+            } else {
+              // 加载 Mapbox JS
+              const script = document.createElement('script');
+              script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js';
+              script.crossOrigin = '';
+              script.onload = () => {
+                initMapboxMap();
+              };
+              document.head.appendChild(script);
+            }
           } catch (error) {
-            console.error('加载 OpenStreetMap 失败:', error);
+            console.error('加载 Mapbox 失败:', error);
           }
         };
 
-        loadOpenStreetMap();
+        const initMapboxMap = () => {
+          const mapboxgl = window.mapboxgl;
+          const container = document.getElementById('mapbox-container');
+
+          if (!mapboxgl || !container) {
+            console.error('Mapbox library or container not available');
+            return;
+          }
+
+          mapboxgl.accessToken =
+            import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ||
+            'pk.eyJ1Ijoic2FtbGVhcm5lciIsImEiOiJja2IzNTFsZXMwaG44MzRsbWplbGNtNHo0In0.BmjC6OX6egwKdm0fAmN_Nw';
+
+          // 确保容器完全可见并正确设置尺寸
+          container.style.display = 'block';
+          container.style.visibility = 'visible';
+          container.style.width = '100%';
+          container.style.height = '100%';
+
+          // 强制重排以确保容器尺寸正确
+          container.offsetHeight;
+
+          const mapboxMap = new mapboxgl.Map({
+            container: 'mapbox-container',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: mapViewState.center,
+            zoom: mapViewState.zoom,
+          });
+
+          // 监听地图视角变化
+          mapboxMap.on('moveend', () => {
+            const center = mapboxMap.getCenter();
+            const zoom = mapboxMap.getZoom();
+            setMapViewState({
+              center: [center.lng, center.lat],
+              zoom: zoom,
+            });
+          });
+
+          // 保存Mapbox实例
+          mapboxInstanceRef.current = mapboxMap;
+
+          // 添加导航控件
+          mapboxMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+          // 添加比例尺
+          mapboxMap.addControl(
+            new mapboxgl.ScaleControl({
+              maxWidth: 100,
+              unit: 'metric',
+            }),
+            'bottom-left'
+          );
+
+          // 地图加载完成后添加设备标记
+          mapboxMap.on('load', () => {
+            console.log('Mapbox 初始化完成');
+            // 添加设备标记
+            updateMapboxMarkers(mapboxMap);
+          });
+
+          // 强制重绘地图以解决显示问题
+          setTimeout(() => {
+            if (mapboxMap) {
+              mapboxMap.resize();
+              // 再次重绘确保完全显示
+              setTimeout(() => {
+                if (mapboxMap) {
+                  mapboxMap.resize();
+                }
+              }, 50);
+            }
+          }, 100);
+        };
+
+        loadMapbox();
       }
     }, [currentMapSource, mapLoaded]);
 
+    // 更新 Mapbox 设备标记
+    const updateMapboxMarkers = (map: any) => {
+      try {
+        // 清除现有标记
+        if (mapboxMarkersRef.current.length > 0) {
+          mapboxMarkersRef.current.forEach((marker) => {
+            if (marker && marker.remove) {
+              marker.remove();
+            }
+          });
+          mapboxMarkersRef.current = [];
+        }
+
+        // 添加新标记
+        devices.forEach((device) => {
+          if (device.longitude && device.latitude) {
+            // 创建标记元素
+            const el = document.createElement('div');
+            el.className = 'mapbox-marker';
+            el.style.width = '18px';
+            el.style.height = '18px';
+            el.style.borderRadius = '50%';
+            el.style.backgroundColor = getStatusColor(device.status);
+            el.style.border = '3px solid white';
+            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+            el.style.cursor = 'pointer';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.fontSize = '10px';
+            el.style.fontWeight = 'bold';
+            el.style.color = 'white';
+
+            // 添加点击事件
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (onMarkerClick) {
+                onMarkerClick(device);
+              }
+            });
+
+            // 创建标记
+            const marker = new window.mapboxgl.Marker({
+              element: el,
+              anchor: 'center',
+            })
+              .setLngLat([device.longitude, device.latitude])
+              .setPopup(
+                new window.mapboxgl.Popup({ offset: 25 }).setHTML(`
+                  <div class="device-popup">
+                    <h4>${device.name}</h4>
+                    <p>状态: ${getStatusText(device.status)}</p>
+                    <p>坐标: ${Number(device.longitude).toFixed(6)}, ${Number(device.latitude).toFixed(6)}</p>
+                    ${device.address ? `<p>地址: ${device.address}</p>` : ''}
+                  </div>
+                `)
+              )
+              .addTo(map);
+
+            mapboxMarkersRef.current.push(marker);
+          }
+        });
+      } catch (error) {
+        console.error('更新 Mapbox 标记失败:', error);
+      }
+    };
+
+    // 获取状态颜色
+
     return (
       <div style={{ position: 'relative', height }} ref={elementRef}>
-        {/* OpenStreetMap 容器 */}
-        {currentMapSource === 'osm' && (
-          <div
-            id="openstreetmap-container"
-            style={{
-              width: '100%',
-              height: '100%',
-              overflow: 'hidden',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              zIndex: 1,
-            }}
-          />
-        )}
+        {/* Mapbox 容器 */}
+        <div
+          id="mapbox-container"
+          style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            zIndex: 1,
+            display: currentMapSource === 'mapbox' ? 'block' : 'none',
+          }}
+        />
 
         {/* 高德地图容器 */}
         <div
@@ -842,8 +1092,33 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         {/* 地图源切换按钮 */}
         <button
           onClick={() => {
-            const newSource: MapSource = currentMapSource === 'amap' ? 'osm' : 'amap';
+            // 在切换前保存当前地图的视角
+            if (currentMapSource === 'amap' && mapInstanceRef.current) {
+              const center = mapInstanceRef.current.getCenter();
+              const zoom = mapInstanceRef.current.getZoom();
+              setMapViewState({
+                center: [center.lng, center.lat],
+                zoom: zoom,
+              });
+            } else if (currentMapSource === 'mapbox' && mapboxInstanceRef.current) {
+              const center = mapboxInstanceRef.current.getCenter();
+              const zoom = mapboxInstanceRef.current.getZoom();
+              setMapViewState({
+                center: [center.lng, center.lat],
+                zoom: zoom,
+              });
+            }
+
+            const newSource: MapSource = currentMapSource === 'amap' ? 'mapbox' : 'amap';
             setCurrentMapSource(newSource);
+
+            // 切换到高德地图时确保地图已初始化
+            if (newSource === 'amap' && window.AMap) {
+              // 延迟初始化以确保DOM更新完成
+              setTimeout(() => {
+                initMap();
+              }, 100);
+            }
           }}
           style={{
             position: 'absolute',
@@ -863,9 +1138,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             justifyContent: 'center',
             boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
           }}
-          title={`切换到${currentMapSource === 'amap' ? 'OpenStreetMap' : '高德地图'}`}
+          title={`切换到${currentMapSource === 'amap' ? 'Mapbox' : '高德地图'}`}
         >
-          {currentMapSource === 'amap' ? '🌍' : '🇨🇳'}
+          {currentMapSource === 'amap' ? '🗺️' : '🇨🇳'}
         </button>
 
         {/* 地理围栏工具栏 */}
