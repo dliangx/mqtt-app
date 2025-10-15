@@ -80,10 +80,7 @@ func CreateAlert(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+
 	// Convert parseData.Fields map to JSON string
 	parsedDataJSON, err := json.Marshal(parseData.Fields)
 	if err != nil {

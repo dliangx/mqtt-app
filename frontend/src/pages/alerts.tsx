@@ -3,13 +3,14 @@ import type { Alert as AlertType } from 'src/types';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import { Refresh as RefreshIcon, Settings as SettingsIcon } from '@mui/icons-material';
-import { Box, Chip, Paper, Typography, IconButton, LinearProgress, Button } from '@mui/material';
+import { Box, Chip, Paper, Button, Typography, IconButton, LinearProgress } from '@mui/material';
+
+import { useRouter } from 'src/routes/hooks';
 
 import { CONFIG } from 'src/config-global';
 import { apiService } from 'src/services/api';
 
 import { useSnackbar } from 'src/components/snackbar';
-import { useRouter } from 'src/routes/hooks';
 
 import AlertList from '../components/alerts/AlertList';
 
