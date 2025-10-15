@@ -123,6 +123,7 @@ export default function MessageTypeList({
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>ID</TableCell>
               <TableCell>名称</TableCell>
               <TableCell>描述</TableCell>
               <TableCell>协议</TableCell>
@@ -134,6 +135,11 @@ export default function MessageTypeList({
           <TableBody>
             {paginatedConfigs.map((config) => (
               <TableRow key={config.ID} hover>
+                <TableCell>
+                  <Typography variant="body2" color="text.secondary">
+                    {config.ID}
+                  </Typography>
+                </TableCell>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <SettingsIcon fontSize="small" color="action" />
@@ -199,12 +205,12 @@ export default function MessageTypeList({
             ))}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={6} />
+                <TableCell colSpan={7} />
               </TableRow>
             )}
             {configs.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">暂无配置数据</Typography>
                   <Button variant="text" startIcon={<AddIcon />} onClick={onCreate} sx={{ mt: 1 }}>
                     创建第一个配置

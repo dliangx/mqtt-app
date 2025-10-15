@@ -120,7 +120,7 @@ export default function TestDataPage() {
           // 创建Alert数据
           const alertData = {
             device_id: device.ID,
-            type: '1',
+            type: '1', //对应message-type-config的id
             message: '轨迹点',
             raw_data: parsedData.data[i],
             level: 'medium',
