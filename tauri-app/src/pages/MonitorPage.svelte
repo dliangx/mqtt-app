@@ -3,15 +3,18 @@
     import MapboxComponent from "../components/map/MapboxComponent.svelte";
 
     export let devices = [];
+    export let alerts = [];
     export const onRefresh = () => {};
 
     let selectedDevice = null;
     let dialogOpen = false;
     let alertOpen = false;
     let alertMessage = "";
+    let alertType = "info"; // info, success, warning, error
     let mapComponent;
     let navigationCompleteOpen = false;
     let isNavigating = false;
+    let isShowingHistory = false;
 
     function handleMarkerClick(device) {
         selectedDevice = device;
@@ -21,10 +24,12 @@
     function handleCloseDialog() {
         dialogOpen = false;
         selectedDevice = null;
+        // 不自动清除历史轨迹，让用户继续看到轨迹
     }
 
     function handleGeofenceViolation(violation) {
         alertMessage = violation.message;
+        alertType = "warning";
         alertOpen = true;
 
         // 警报显示5秒后自动关闭
@@ -39,6 +44,7 @@
 
     function showNavigationError(deviceName) {
         alertMessage = `导航到设备 "${deviceName}" 失败，请检查网络连接或位置权限`;
+        alertType = "error";
         alertOpen = true;
 
         // 提示显示5秒后自动关闭
@@ -89,6 +95,60 @@
         }
     }
 
+    function showHistoryTrail() {
+        if (!selectedDevice || !mapComponent) return;
+
+        // 查找该设备的历史轨迹数据
+        const deviceAlerts = alerts.filter(
+            (alert) =>
+                alert.device_id === selectedDevice.ID &&
+                alert.type === "1" &&
+                alert.parsed_data,
+        );
+
+        if (deviceAlerts.length === 0) {
+            alertMessage = "该设备暂无历史轨迹数据";
+            alertType = "warning";
+            alertOpen = true;
+            setTimeout(() => {
+                alertOpen = false;
+            }, 3000);
+            return;
+        }
+
+        // 提取经纬度坐标
+        const coordinates = deviceAlerts
+            .map((alert) => {
+                const data = JSON.parse(alert.parsed_data);
+                return [data.longitude, data.latitude];
+            })
+            .filter((coord) => coord[0] && coord[1]); // 过滤无效坐标
+
+        if (coordinates.length < 2) {
+            alertMessage = "历史轨迹数据不足，无法显示轨迹";
+            alertType = "info";
+            alertOpen = true;
+            setTimeout(() => {
+                alertOpen = false;
+            }, 3000);
+            return;
+        }
+
+        // 显示历史轨迹
+        mapComponent.showHistoryTrack(coordinates);
+        isShowingHistory = true;
+
+        // 立即关闭对话框，轨迹会继续显示
+        handleCloseDialog();
+    }
+
+    function clearHistoryTrail() {
+        if (mapComponent) {
+            mapComponent.clearHistoryTrack();
+            isShowingHistory = false;
+        }
+    }
+
     function handleOverlayKeyDown(event) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -105,6 +165,13 @@
     onMount(() => {
         // Map component will be initialized here
     });
+
+    // 组件销毁时清理历史轨迹
+    $: {
+        if (!dialogOpen && isShowingHistory) {
+            // 不自动清除，让用户继续看到轨迹
+        }
+    }
 </script>
 
 <div class="monitor-page">
@@ -218,8 +285,7 @@
                                     </button>
                                     <button
                                         class="history-btn"
-                                        on:click={() =>
-                                            console.log("查看历史轨迹")}
+                                        on:click={showHistoryTrail}
                                     >
                                         查看历史轨迹
                                     </button>
@@ -234,7 +300,18 @@
 
     <!-- Alert Snackbar -->
     {#if alertOpen}
-        <div class="alert-snackbar">
+        <div class="alert-snackbar {alertType}">
+            <div class="alert-icon">
+                {#if alertType === "success"}
+                    ✓
+                {:else if alertType === "warning"}
+                    ⚠
+                {:else if alertType === "error"}
+                    ✕
+                {:else}
+                    ℹ
+                {/if}
+            </div>
             <span>{alertMessage}</span>
             <button on:click={handleCloseAlert} aria-label="关闭警报">×</button>
         </div>
@@ -478,32 +555,86 @@
 
     .alert-snackbar {
         position: fixed;
-        bottom: 80px;
+        top: 100px;
         left: 50%;
         transform: translateX(-50%);
-        background-color: #f44336;
         color: white;
-        padding: 12px 20px;
-        border-radius: 4px;
+        padding: 16px 24px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         gap: 12px;
         z-index: 1001;
-        max-width: 90%;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        animation: slideDown 0.3s ease-out;
     }
 
-    .alert-snackbar button {
-        background: none;
-        border: none;
-        color: white;
+    .alert-snackbar.success {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    }
+
+    .alert-snackbar.warning {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    }
+
+    .alert-snackbar.error {
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    }
+
+    .alert-snackbar.info {
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    .alert-icon {
         font-size: 18px;
-        cursor: pointer;
-        padding: 0;
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .alert-snackbar button {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .alert-snackbar button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+
+    .alert-snackbar span {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.4;
+        flex: 1;
     }
 </style>

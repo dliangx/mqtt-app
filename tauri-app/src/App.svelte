@@ -163,7 +163,7 @@
     <div class="app-container">
         <div class="content">
             {#if currentTab === 0}
-                <MonitorPage {devices} onRefresh={handleRefresh} />
+                <MonitorPage {devices} {alerts} onRefresh={handleRefresh} />
             {:else if currentTab === 1}
                 <ManagementPage {devices} {loading} onRefresh={handleRefresh} />
             {:else if currentTab === 2}

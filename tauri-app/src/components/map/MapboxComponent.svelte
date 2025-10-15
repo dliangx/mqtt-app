@@ -25,6 +25,8 @@
     let isNavigating = false;
     let navigationMarker = null;
     let navigationLine = null;
+    let historyTrackLayerId = "history-track";
+    let historyTrackSourceId = "history-track";
 
     // 导航状态事件
     export let onNavigationStart = () => {};
@@ -274,6 +276,10 @@
         mapInstance.on("load", () => {
             mapLoaded = true;
             renderMarkers();
+            // 自动调整视角到所有标记位置
+            if (devices.length > 0) {
+                fitToMarkers();
+            }
         });
 
         // 添加缩放和旋转控件
@@ -402,6 +408,30 @@
         return 8; // 更远距离：省级视图
     }
 
+    // 自动调整视角到所有标记位置
+    function fitToMarkers() {
+        if (!mapInstance || !mapLoaded || devices.length === 0) return;
+
+        const bounds = new mapboxgl.LngLatBounds();
+
+        // 遍历所有设备，扩展边界
+        devices.forEach((device) => {
+            if (device.longitude && device.latitude) {
+                bounds.extend([device.longitude, device.latitude]);
+            }
+        });
+
+        // 如果没有任何有效坐标，直接返回
+        if (bounds.isEmpty()) return;
+
+        // 调整地图视角
+        mapInstance.fitBounds(bounds, {
+            padding: 50, // 边距
+            duration: 1000, // 1秒动画
+            maxZoom: 15, // 最大缩放级别
+        });
+    }
+
     // 获取状态颜色
     function getStatusColor(status) {
         switch (status) {
@@ -430,6 +460,84 @@
         }
     }
 
+    // 显示历史轨迹
+    export function showHistoryTrack(coordinates) {
+        if (!mapInstance || coordinates.length < 2) return;
+
+        // 清除现有历史轨迹
+        clearHistoryTrack();
+
+        // 检查坐标格式
+        const validCoordinates = coordinates.filter(
+            (coord) =>
+                Array.isArray(coord) &&
+                coord.length === 2 &&
+                typeof coord[0] === "number" &&
+                typeof coord[1] === "number" &&
+                !isNaN(coord[0]) &&
+                !isNaN(coord[1]),
+        );
+
+        if (validCoordinates.length < 2) return;
+
+        // 创建轨迹线
+        const lineString = {
+            type: "Feature",
+            properties: {},
+            geometry: {
+                type: "LineString",
+                coordinates: validCoordinates,
+            },
+        };
+
+        // 添加轨迹源
+        mapInstance.addSource(historyTrackSourceId, {
+            type: "geojson",
+            data: lineString,
+        });
+
+        // 添加轨迹图层
+        mapInstance.addLayer({
+            id: historyTrackLayerId,
+            type: "line",
+            source: historyTrackSourceId,
+            layout: {
+                "line-join": "round",
+                "line-cap": "round",
+            },
+            paint: {
+                "line-color": "#ff6b35",
+                "line-width": 6,
+                "line-opacity": 0.9,
+            },
+        });
+
+        // 调整视角显示整个轨迹
+        const bounds = new mapboxgl.LngLatBounds();
+        coordinates.forEach((coord) => bounds.extend(coord));
+
+        if (!bounds.isEmpty()) {
+            mapInstance.fitBounds(bounds, {
+                padding: 50,
+                duration: 1500,
+                maxZoom: 16,
+            });
+        }
+    }
+
+    // 清除历史轨迹
+    export function clearHistoryTrack() {
+        if (!mapInstance) return;
+
+        if (mapInstance.getLayer(historyTrackLayerId)) {
+            mapInstance.removeLayer(historyTrackLayerId);
+        }
+
+        if (mapInstance.getSource(historyTrackSourceId)) {
+            mapInstance.removeSource(historyTrackSourceId);
+        }
+    }
+
     onMount(() => {
         initMap();
 
@@ -449,9 +557,19 @@
                 navigationMarker.remove();
                 navigationMarker = null;
             }
+            if (navigationLine) {
+                if (mapInstance.getSource("navigation-line")) {
+                    mapInstance.removeLayer("navigation-line");
+                    mapInstance.removeSource("navigation-line");
+                }
+                navigationLine = null;
+            }
 
             // 清除路线
             clearRoute();
+
+            // 清除历史轨迹
+            clearHistoryTrack();
 
             // 重置导航状态
             if (isNavigating) {
@@ -483,16 +601,15 @@
 
             if (currentDevicesHash !== previousDevicesHash) {
                 isUpdating = true;
-                updateCount++;
-                console.log(
-                    `[MapboxComponent] 更新次数: ${updateCount}, 设备数量: ${devices.length}, 数据变化: true`,
-                );
                 previousDevicesHash = currentDevicesHash;
-                console.log(`[MapboxComponent] 设备数据发生变化，重新渲染标记`);
 
                 // 使用 requestAnimationFrame 来避免频繁更新
                 requestAnimationFrame(() => {
                     renderMarkers();
+                    // 重新调整视角到标记位置
+                    if (devices.length > 0) {
+                        fitToMarkers();
+                    }
                     isUpdating = false;
                 });
             }
