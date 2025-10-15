@@ -1,5 +1,5 @@
 <script>
-    export let onRefresh = () => {};
+    export const onRefresh = () => {};
     export let onLogout = () => {};
 
     let user = {};

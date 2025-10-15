@@ -571,40 +571,6 @@
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
-    /* 导航目标标记样式 */
-    .navigation-target {
-        position: relative;
-        width: 40px;
-        height: 40px;
-        pointer-events: none;
-    }
-
-    .navigation-pulse {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 20px;
-        height: 20px;
-        background: #1976d2;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        animation: pulse 2s infinite;
-        box-shadow: 0 0 0 rgba(25, 118, 210, 0.4);
-    }
-
-    .navigation-center {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 8px;
-        height: 8px;
-        background: white;
-        border: 2px solid #1976d2;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1;
-    }
-
     @keyframes pulse {
         0% {
             transform: translate(-50%, -50%) scale(0.8);

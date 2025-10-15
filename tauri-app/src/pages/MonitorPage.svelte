@@ -366,21 +366,6 @@
         margin-top: 20px;
     }
 
-    .navigation-info {
-        margin-bottom: 12px;
-        padding: 8px 12px;
-        background-color: #f8f9fa;
-        border-radius: 6px;
-        border-left: 4px solid #1976d2;
-    }
-
-    .navigation-description {
-        margin: 0;
-        font-size: 12px;
-        color: #666;
-        line-height: 1.4;
-    }
-
     .nav-icon {
         font-size: 14px;
         margin-right: 6px;
@@ -447,33 +432,6 @@
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
-    }
-
-    .dialog-actions {
-        padding: 16px 24px;
-        border-top: 1px solid #e0e0e0;
-        display: flex;
-        justify-content: flex-end;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    .dialog-actions:hover {
-        background-color: #f5f5f5;
-    }
-
-    .close-action {
-        background: #1976d2;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
-    .close-action:hover {
-        background: #1565c0;
     }
 
     .alert-snackbar {

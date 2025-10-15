@@ -2,10 +2,10 @@
     import { onMount } from "svelte";
 
     export let alerts = [];
-    export let unreadCount = 0;
+    export const unreadCount = 0;
     export let loading = false;
     export let onMarkAsRead = () => {};
-    export let onRefresh = () => {};
+    export const onRefresh = () => {};
 
     let testMode = false;
     let testAlerts = [];
