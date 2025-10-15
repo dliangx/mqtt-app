@@ -5,7 +5,6 @@
 
     export let devices = [];
     export let onMarkerClick = () => {};
-    export const onGeofenceViolation = () => {};
     export let height = "400px";
     export let accessToken =
         "pk.eyJ1Ijoic2FtbGVhcm5lciIsImEiOiJja2IzNTFsZXMwaG44MzRsbWplbGNtNHo0In0.BmjC6OX6egwKdm0fAmN_Nw";
@@ -143,33 +142,12 @@
         }
     }
 
-    // 添加地理围栏
-    function addGeofence(points) {
-        if (!mapInstance || !mapLoaded) return;
-
-        // 这里可以添加地理围栏功能
-        console.log("添加地理围栏:", points);
-    }
-
-    // 移除地理围栏
-    function removeGeofence(id) {
-        console.log("移除地理围栏:", id);
-    }
-
-    // 清除所有地理围栏
-    function clearGeofences() {
-        console.log("清除所有地理围栏");
-    }
-
     onMount(() => {
         initMap();
 
         // 暴露方法给父组件
         if (mapElement) {
             mapElement.navigateToDevice = navigateToDevice;
-            mapElement.addGeofence = addGeofence;
-            mapElement.removeGeofence = removeGeofence;
-            mapElement.clearGeofences = clearGeofences;
         }
 
         return () => {
