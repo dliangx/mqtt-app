@@ -1,9 +1,9 @@
 <script>
     import { onMount } from "svelte";
-    import AMapComponent from "../components/map/AMapComponent.svelte";
+    import MapboxComponent from "../components/map/MapboxComponent.svelte";
 
     export let devices = [];
-    export let onRefresh = () => {};
+    export const onRefresh = () => {};
 
     let selectedDevice = null;
     let dialogOpen = false;
@@ -94,7 +94,7 @@
 <div class="monitor-page">
     <!-- Map component with geofence and navigation features -->
     <div class="map-container">
-        <AMapComponent
+        <MapboxComponent
             bind:this={mapComponent}
             {devices}
             onMarkerClick={handleMarkerClick}
@@ -109,8 +109,6 @@
             class="dialog-overlay"
             role="button"
             tabindex="0"
-            onclick={handleCloseDialog}
-            onkeydown={handleOverlayKeyDown}
             aria-label="关闭对话框"
         >
             <div
@@ -118,16 +116,14 @@
                 role="dialog"
                 aria-labelledby="dialog-title"
                 aria-modal="true"
-                onclick={(e) => e.stopPropagation()}
-                onkeydown={handleDialogKeyDown}
             >
-                <div class="dialog-header">
+                <div class="dialog-header" role="button" tabindex="0">
                     <h3 id="dialog-title">
                         设备信息 - {selectedDevice?.name || "未知设备"}
                     </h3>
                     <button
                         class="close-btn"
-                        onclick={handleCloseDialog}
+                        on:click={handleCloseDialog}
                         aria-label="关闭对话框">×</button
                     >
                 </div>
@@ -176,7 +172,7 @@
                             <div class="actions">
                                 <button
                                     class="nav-btn"
-                                    onclick={navigateToDevice}
+                                    on:click={navigateToDevice}
                                     disabled={!selectedDevice.longitude ||
                                         !selectedDevice.latitude}
                                 >
@@ -186,12 +182,6 @@
                         </div>
                     {/if}
                 </div>
-
-                <div class="dialog-actions">
-                    <button class="close-action" onclick={handleCloseDialog}
-                        >关闭</button
-                    >
-                </div>
             </div>
         </div>
     {/if}
@@ -200,7 +190,7 @@
     {#if alertOpen}
         <div class="alert-snackbar">
             <span>{alertMessage}</span>
-            <button onclick={handleCloseAlert} aria-label="关闭警报">×</button>
+            <button on:click={handleCloseAlert} aria-label="关闭警报">×</button>
         </div>
     {/if}
 </div>
@@ -251,9 +241,14 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 24px 0;
+        padding: 20px 24px 16px;
         border-bottom: 1px solid #e0e0e0;
-        padding-bottom: 16px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .dialog-header:hover {
+        background-color: #f5f5f5;
     }
 
     .dialog-header h3 {
@@ -360,6 +355,12 @@
         border-top: 1px solid #e0e0e0;
         display: flex;
         justify-content: flex-end;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .dialog-actions:hover {
+        background-color: #f5f5f5;
     }
 
     .close-action {
