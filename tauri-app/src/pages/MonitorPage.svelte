@@ -197,25 +197,33 @@
                             {/if}
 
                             <div class="actions">
-                                <button
-                                    class="nav-btn {isNavigating
-                                        ? 'navigating'
-                                        : ''}"
-                                    on:click={navigateToDevice}
-                                    disabled={!selectedDevice.longitude ||
-                                        !selectedDevice.latitude ||
-                                        isNavigating}
-                                >
-                                    {#if isNavigating}
-                                        <div class="nav-loading">
-                                            <div class="nav-spinner"></div>
-                                            正在计算路线...
-                                        </div>
-                                    {:else}
-                                        <div class="nav-icon">🚗</div>
-                                        开始导航
-                                    {/if}
-                                </button>
+                                <div class="button-group">
+                                    <button
+                                        class="nav-btn {isNavigating
+                                            ? 'navigating'
+                                            : ''}"
+                                        on:click={navigateToDevice}
+                                        disabled={!selectedDevice.longitude ||
+                                            !selectedDevice.latitude ||
+                                            isNavigating}
+                                    >
+                                        {#if isNavigating}
+                                            <div class="nav-loading">
+                                                <div class="nav-spinner"></div>
+                                                正在计算路线...
+                                            </div>
+                                        {:else}
+                                            开始导航
+                                        {/if}
+                                    </button>
+                                    <button
+                                        class="history-btn"
+                                        on:click={() =>
+                                            console.log("查看历史轨迹")}
+                                    >
+                                        查看历史轨迹
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     {/if}
@@ -366,37 +374,52 @@
         margin-top: 20px;
     }
 
+    .button-group {
+        display: flex;
+        gap: 16px;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .button-group > button {
+        flex: 0 1 auto;
+        min-width: 120px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
     .nav-icon {
         font-size: 14px;
         margin-right: 6px;
     }
 
     .nav-btn {
-        background: #1976d2;
-        border: none;
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 14px;
+        background: white;
+        border: 1px solid #1976d2;
+        color: #1976d2;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
-        width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .nav-btn:hover:not(:disabled) {
-        background-color: #1565c0;
+        background-color: #1976d2;
+        color: white;
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+        box-shadow: 0 2px 6px rgba(25, 118, 210, 0.2);
     }
 
     .nav-btn.navigating {
-        background-color: #757575;
-        color: white;
+        background-color: #f5f5f5;
+        border-color: #ccc;
+        color: #999;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
@@ -427,11 +450,39 @@
     }
 
     .nav-btn:disabled {
-        background-color: #e0e0e0;
-        color: #9e9e9e;
+        background-color: #f5f5f5;
+        border-color: #ddd;
+        color: #ccc;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
+    }
+
+    .history-btn {
+        background: white;
+        border: 1px solid #1976d2;
+        color: #1976d2;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .history-btn:hover {
+        background-color: #1976d2;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(25, 118, 210, 0.2);
+    }
+
+    .history-icon {
+        font-size: 13px;
     }
 
     .alert-snackbar {
