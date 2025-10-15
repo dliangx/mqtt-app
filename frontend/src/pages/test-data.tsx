@@ -124,6 +124,7 @@ export default function TestDataPage() {
             message: '轨迹点',
             raw_data: parsedData.data[i],
             level: 'medium',
+            read: true,
           };
           console.log(`Creating alert ${i + 1}:`, alertData);
 

@@ -53,13 +53,7 @@ func MarkAlertAsRead(c *gin.Context) {
 }
 
 func CreateAlert(c *gin.Context) {
-	var input struct {
-		DeviceID uint   `json:"device_id" binding:"required"`
-		Type     string `json:"type" binding:"required"`
-		Message  string `json:"message" binding:"required"`
-		Level    string `json:"level" binding:"required"`
-		RawData  string `json:"raw_data" binding:"required"`
-	}
+	var input models.Alert
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -97,23 +91,16 @@ func CreateAlert(c *gin.Context) {
 		return
 	}
 
-	alert := models.Alert{
-		DeviceID:   input.DeviceID,
-		Type:       input.Type,
-		Message:    input.Message,
-		Level:      input.Level,
-		Timestamp:  time.Now().Unix(),
-		RawData:    input.RawData,
-		ParsedData: string(parsedDataJSON),
-	}
+	input.Timestamp = time.Now().Unix()
+	input.ParsedData = string(parsedDataJSON)
 
-	result := database.DB.Create(&alert)
+	result := database.DB.Create(&input)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create alert"})
 		return
 	}
 
-	c.JSON(http.StatusOK, alert)
+	c.JSON(http.StatusOK, input)
 }
 
 func DeleteAlert(c *gin.Context) {
