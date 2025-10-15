@@ -10,6 +10,8 @@
     let alertOpen = false;
     let alertMessage = "";
     let mapComponent;
+    let navigationCompleteOpen = false;
+    let isNavigating = false;
 
     function handleMarkerClick(device) {
         selectedDevice = device;
@@ -33,6 +35,16 @@
 
     function handleCloseAlert() {
         alertOpen = false;
+    }
+
+    function showNavigationError(deviceName) {
+        alertMessage = `导航到设备 "${deviceName}" 失败，请检查网络连接或位置权限`;
+        alertOpen = true;
+
+        // 提示显示5秒后自动关闭
+        setTimeout(() => {
+            alertOpen = false;
+        }, 3000);
     }
 
     function getStatusColor(status) {
@@ -69,7 +81,11 @@
             mapComponent
         ) {
             mapComponent.navigateToDevice(selectedDevice);
-            handleCloseDialog();
+
+            // 2秒后关闭对话框
+            setTimeout(() => {
+                handleCloseDialog();
+            }, 2000);
         }
     }
 
@@ -99,6 +115,17 @@
             {devices}
             onMarkerClick={handleMarkerClick}
             onGeofenceViolation={handleGeofenceViolation}
+            onNavigationStart={() => {
+                isNavigating = true;
+            }}
+            onNavigationEnd={() => {
+                isNavigating = false;
+            }}
+            onNavigationError={(errorMessage) => {
+                isNavigating = false;
+                showNavigationError(selectedDevice?.name || "设备");
+                console.error("导航错误:", errorMessage);
+            }}
             height="100%"
         />
     </div>
@@ -171,12 +198,23 @@
 
                             <div class="actions">
                                 <button
-                                    class="nav-btn"
+                                    class="nav-btn {isNavigating
+                                        ? 'navigating'
+                                        : ''}"
                                     on:click={navigateToDevice}
                                     disabled={!selectedDevice.longitude ||
-                                        !selectedDevice.latitude}
+                                        !selectedDevice.latitude ||
+                                        isNavigating}
                                 >
-                                    导航到此位置
+                                    {#if isNavigating}
+                                        <div class="nav-loading">
+                                            <div class="nav-spinner"></div>
+                                            正在计算路线...
+                                        </div>
+                                    {:else}
+                                        <div class="nav-icon">🚗</div>
+                                        开始导航
+                                    {/if}
                                 </button>
                             </div>
                         </div>
@@ -328,26 +366,87 @@
         margin-top: 20px;
     }
 
-    .nav-btn {
-        background: none;
-        border: 1px solid #1976d2;
-        color: #1976d2;
-        padding: 6px 12px;
-        border-radius: 4px;
+    .navigation-info {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #1976d2;
+    }
+
+    .navigation-description {
+        margin: 0;
         font-size: 12px;
+        color: #666;
+        line-height: 1.4;
+    }
+
+    .nav-icon {
+        font-size: 14px;
+        margin-right: 6px;
+    }
+
+    .nav-btn {
+        background: #1976d2;
+        border: none;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
 
     .nav-btn:hover:not(:disabled) {
-        background-color: #1976d2;
+        background-color: #1565c0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+    }
+
+    .nav-btn.navigating {
+        background-color: #757575;
         color: white;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .nav-loading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 2px solid white;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
     }
 
     .nav-btn:disabled {
-        border-color: #ccc;
-        color: #ccc;
+        background-color: #e0e0e0;
+        color: #9e9e9e;
         cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
     }
 
     .dialog-actions {
