@@ -74,9 +74,6 @@ export default function MessageTypesPage() {
   };
 
   const handleEdit = (config: MessageTypeConfig) => {
-    console.log('Editing config:', config);
-    console.log('Config ID:', config.ID);
-    console.log('Config keys:', Object.keys(config));
     setSelectedConfig(config);
     setViewMode('edit');
     setDialogOpen(true);

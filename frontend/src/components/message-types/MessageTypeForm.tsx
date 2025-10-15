@@ -162,7 +162,6 @@ export default function MessageTypeForm({ config, onSave, onCancel, mode }: Mess
       if (mode === 'create') {
         result = await apiService.createMessageTypeConfig(configData);
       } else {
-        console.log('Editing config with ID:', config?.ID);
         if (!config?.ID) {
           throw new Error('配置ID不存在，无法更新');
         }

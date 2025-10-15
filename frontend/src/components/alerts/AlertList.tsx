@@ -98,30 +98,29 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelected = filteredAlerts.map((alert) => alert.id);
+      const newSelected = paginatedAlerts.map((alert) => alert.id);
       setSelected(newSelected);
       return;
     }
     setSelected([]);
   };
 
-  const handleClick = (event: React.MouseEvent, id: number) => {
+  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>, id: number) => {
+    event.stopPropagation();
     const selectedIndex = selected.indexOf(id);
     let newSelected: number[] = [];
 
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1)
-      );
+    if (event.target.checked) {
+      newSelected = [...selected, id];
+    } else {
+      newSelected = selected.filter((selectedId) => selectedId !== id);
     }
     setSelected(newSelected);
+  };
+
+  const handleRowClick = (alert: Alert) => {
+    // Disable row click for selection, rely only on checkboxes
+    // onAlertClick?.(alert);
   };
 
   const handleMarkAsRead = async (alertIds: number[]) => {
@@ -212,8 +211,8 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
             <TableRow>
               <TableCell padding="checkbox">
                 <Checkbox
-                  indeterminate={selected.length > 0 && selected.length < filteredAlerts.length}
-                  checked={filteredAlerts.length > 0 && selected.length === filteredAlerts.length}
+                  indeterminate={selected.length > 0 && selected.length < paginatedAlerts.length}
+                  checked={paginatedAlerts.length > 0 && selected.length === paginatedAlerts.length}
                   onChange={handleSelectAllClick}
                 />
               </TableCell>
@@ -229,18 +228,12 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
             {paginatedAlerts.map((alert) => {
               const isItemSelected = isSelected(alert.id);
               return (
-                <TableRow
-                  key={alert.id}
-                  hover
-                  onClick={(event) => {
-                    handleClick(event, alert.id);
-                    onAlertClick?.(alert);
-                  }}
-                  selected={isItemSelected}
-                  sx={{ cursor: 'pointer' }}
-                >
+                <TableRow key={alert.id} hover selected={isItemSelected}>
                   <TableCell padding="checkbox">
-                    <Checkbox checked={isItemSelected} />
+                    <Checkbox
+                      checked={isItemSelected}
+                      onChange={(event) => handleCheckboxChange(event, alert.id)}
+                    />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">

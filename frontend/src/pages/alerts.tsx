@@ -59,7 +59,6 @@ export default function AlertsPage() {
   }, [fetchData]);
 
   const handleAlertClick = (alert: AlertType) => {
-    console.log('Alert clicked:', alert);
     // 可以在这里实现消息详情弹窗或标记为已读
   };
 

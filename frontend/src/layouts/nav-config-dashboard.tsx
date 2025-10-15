@@ -42,11 +42,6 @@ export const navData = [
     title: '消息中心',
     path: '/alerts',
     icon: <Icon component={WarningIcon} />,
-    info: (
-      <Label color="error" variant="inverted">
-        +0
-      </Label>
-    ),
   },
   {
     title: '消息类型配置',

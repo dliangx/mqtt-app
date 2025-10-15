@@ -52,6 +52,8 @@ func main() {
 			auth.GET("/alerts/unread", controllers.GetUnreadAlerts)
 			auth.POST("/alerts", controllers.CreateAlert)
 			auth.PUT("/alerts/:id/read", controllers.MarkAlertAsRead)
+			auth.PUT("/alerts/read", controllers.MarkAlertsAsRead)
+			auth.PUT("/alerts/read-all", controllers.MarkAllAlertsAsRead)
 			auth.DELETE("/alerts/:id", controllers.DeleteAlert)
 
 			// Message type config routes

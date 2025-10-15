@@ -106,7 +106,15 @@ export const apiService = {
 
   markAlertAsRead: (id: number) => api.put<ApiResponse>(`/alerts/${id}/read`),
 
+  markAlertsAsRead: (ids: number[]) =>
+    api.put<ApiResponse>("/alerts/read", { ids }),
+
+  markAllAlertsAsRead: () => api.put<ApiResponse>("/alerts/read-all"),
+
   deleteAlert: (id: number) => api.delete<ApiResponse>(`/alerts/${id}`),
+
+  deleteAlerts: (ids: number[]) =>
+    api.delete<ApiResponse>("/alerts", { data: { ids } }),
 
   // Data push
   pushDeviceData: (data: {

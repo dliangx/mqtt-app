@@ -567,7 +567,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         ) {
           const path = result.route.paths[0];
           console.log('路线规划成功，距离:', path.distance, '米，时间:', path.duration, '秒');
-
           // 解析路线坐标点
           const polylinePath = path.steps.flatMap((step: any) => {
             const points = step.polyline.split(';').map((point: string) => {

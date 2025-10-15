@@ -185,8 +185,6 @@ export default function MessageTypeList({
                       <IconButton
                         size="small"
                         onClick={() => {
-                          console.log('Edit button clicked, config:', config);
-                          console.log('Config ID:', config.ID);
                           onEdit(config);
                         }}
                         color="primary"

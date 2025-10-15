@@ -89,7 +89,6 @@ export default function TestDataPage() {
       let parsedData;
       try {
         parsedData = JSON.parse(testData);
-        console.log('Parsed trajectory data:', parsedData);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
         enqueueSnackbar('轨迹数据格式错误，请检查JSON格式', { variant: 'error' });
@@ -97,10 +96,8 @@ export default function TestDataPage() {
       }
 
       // 获取设备列表
-      console.log('Fetching devices...');
       const devicesResponse = await apiService.getDevices();
       const devices = Array.isArray(devicesResponse) ? [...devicesResponse] : [];
-      console.log('Available devices:', devices);
 
       if (devices.length === 0) {
         enqueueSnackbar('没有可用的设备，请先创建设备', { variant: 'warning' });
@@ -112,7 +109,7 @@ export default function TestDataPage() {
       // 将轨迹数据转换为Alert格式并推送
       let successCount = 0;
       let errorCount = 0;
-      console.log(parsedData);
+
       for (let i = 0; i < parsedData.data.length; i++) {
         try {
           const device = devices[0];
@@ -126,10 +123,7 @@ export default function TestDataPage() {
             level: 'medium',
             read: true,
           };
-          console.log(`Creating alert ${i + 1}:`, alertData);
-
           await apiService.createAlert(alertData);
-          console.log(`Successfully created alert ${i + 1}`);
           successCount++;
         } catch (err) {
           console.error(`Failed to push alert ${i + 1}:`, err);

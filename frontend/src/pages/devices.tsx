@@ -267,15 +267,6 @@ export default function DevicesPage() {
         ? devices.filter((device) => !device.group_id)
         : devices.filter((device) => device.group_id === deviceGroups[activeTab - 2]?.id);
 
-  // Debug logging
-  console.log('Active Tab:', activeTab);
-  console.log('Device Groups:', deviceGroups);
-  console.log('All Devices:', devices);
-  console.log('Filtered Devices:', filteredDevices);
-  if (activeTab >= 2) {
-    console.log('Selected Group:', deviceGroups[activeTab - 2]);
-  }
-
   const paginatedDevices = filteredDevices.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -321,7 +312,6 @@ export default function DevicesPage() {
           <Tabs
             value={activeTab}
             onChange={(_: React.SyntheticEvent, newValue: number) => {
-              console.log('Tab changed from', activeTab, 'to', newValue);
               setActiveTab(newValue);
             }}
           >

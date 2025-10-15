@@ -103,6 +103,75 @@ func CreateAlert(c *gin.Context) {
 	c.JSON(http.StatusOK, input)
 }
 
+func MarkAlertsAsRead(c *gin.Context) {
+	var input struct {
+		IDs []uint `json:"ids" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	// Get device IDs that belong to the user
+	var deviceIDs []uint
+	if err := database.DB.Model(&models.Device{}).
+		Where("user_id = ?", userID).
+		Pluck("id", &deviceIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user devices"})
+		return
+	}
+
+	if len(deviceIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No alerts to mark as read"})
+		return
+	}
+
+	// Update alerts that belong to user's devices
+	result := database.DB.Model(&models.Alert{}).
+		Where("id IN ? AND device_id IN ?", input.IDs, deviceIDs).
+		Update("read", true)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark alerts as read"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Alerts marked as read successfully"})
+}
+
+func MarkAllAlertsAsRead(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	// Get device IDs that belong to the user
+	var deviceIDs []uint
+	if err := database.DB.Model(&models.Device{}).
+		Where("user_id = ?", userID).
+		Pluck("id", &deviceIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user devices"})
+		return
+	}
+
+	if len(deviceIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No alerts to mark as read"})
+		return
+	}
+
+	// Update alerts that belong to user's devices
+	result := database.DB.Model(&models.Alert{}).
+		Where("device_id IN ?", deviceIDs).
+		Update("read", true)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark all alerts as read"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "All alerts marked as read successfully"})
+}
+
 func DeleteAlert(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.MustGet("userID").(uint)
