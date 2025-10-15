@@ -120,7 +120,7 @@ export default function TestDataPage() {
             type: '1', //对应message-type-config的id
             message: '轨迹点',
             raw_data: parsedData.data[i],
-            level: 'medium',
+            level: 'low',
             read: true,
           };
           await apiService.createAlert(alertData);

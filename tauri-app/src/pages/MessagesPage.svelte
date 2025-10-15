@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
 
     export let alerts = [];
+    export let devices = [];
     export const unreadCount = 0;
     export let loading = false;
     export let onMarkAsRead = () => {};
@@ -15,7 +16,7 @@
         const generateTestAlerts = () => {
             const testData = [];
             const devices = ["设备A", "设备B", "设备C", "设备D", "设备E"];
-            const severities = ["critical", "warning", "info"];
+            const severities = ["high", "medium", "low"];
             const messages = [
                 "温度异常升高，请立即检查",
                 "设备离线，连接中断",
@@ -40,7 +41,6 @@
                     type: "alert",
                     message: messages[messageIndex],
                     level: severities[severityIndex],
-                    severity: severities[severityIndex],
                     read: i > 10, // 前10条未读，后10条已读
                     timestamp: Date.now() - i * 3600000, // 按小时递减
                     created_at: new Date(
@@ -81,13 +81,29 @@
 
     $: displayAlerts = testMode ? testAlerts : alerts;
 
+    // 获取设备名称
+    function getDeviceName(alert) {
+        // 如果alert已经有device对象且包含name，直接返回
+        if (alert.device?.name) {
+            return alert.device.name;
+        }
+
+        // 通过device_id在devices数组中查找对应的设备
+        if (alert.device_id && devices.length > 0) {
+            const device = devices.find((d) => d.ID === alert.device_id);
+            return device?.name || "未知设备";
+        }
+
+        return "未知设备";
+    }
+
     function getSeverityColor(severity) {
         switch (severity) {
-            case "critical":
+            case "high":
                 return "#f44336";
-            case "warning":
+            case "medium":
                 return "#ff9800";
-            case "info":
+            case "low":
                 return "#2196f3";
             default:
                 return "#757575";
@@ -96,12 +112,12 @@
 
     function getSeverityText(severity) {
         switch (severity) {
-            case "critical":
-                return "严重";
-            case "warning":
-                return "警告";
-            case "info":
-                return "信息";
+            case "high":
+                return "高";
+            case "medium":
+                return "中";
+            case "low":
+                return "低";
             default:
                 return severity;
         }
@@ -152,15 +168,15 @@
                             <div class="alert-header">
                                 <div class="device-info">
                                     <span class="alert-icon">🔔</span>
-                                    <h3>{alert.device?.name || "未知设备"}</h3>
+                                    <h3>{getDeviceName(alert)}</h3>
                                 </div>
                                 <span
                                     class="severity-badge"
                                     style="background-color: {getSeverityColor(
-                                        alert.severity,
+                                        alert.level,
                                     )}"
                                 >
-                                    {getSeverityText(alert.severity)}
+                                    {getSeverityText(alert.level)}
                                 </span>
                             </div>
 

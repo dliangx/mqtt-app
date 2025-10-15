@@ -169,6 +169,7 @@
             {:else if currentTab === 2}
                 <MessagesPage
                     {alerts}
+                    {devices}
                     unreadCount={unreadAlerts}
                     {loading}
                     onMarkAsRead={handleMarkAsRead}
