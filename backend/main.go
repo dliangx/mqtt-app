@@ -64,7 +64,9 @@ func main() {
 			auth.PUT("/message-types/:id/default", controllers.SetDefaultMessageTypeConfig)
 			auth.POST("/message-types/parse", controllers.ParseMessageData)
 			auth.POST("/message-types/test", controllers.TestMessageFormat)
-			auth.POST("/message-types/geo-test", controllers.CreateAndGetGeoTestData)
+
+			auth.POST("/message-types/geo-test-data", controllers.GetGeoTestData)
+			auth.POST("/message-types/geo-config", controllers.CreateGeoConfig)
 
 			// Data push routes
 			auth.POST("/data/push", controllers.PushDeviceData)

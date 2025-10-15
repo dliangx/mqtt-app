@@ -744,6 +744,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             type: 'geofence_violation',
             message: violation.message,
             level: 'warning',
+            raw_data: JSON.stringify(violation),
           });
         } catch (error) {
           console.error('Failed to create alert:', error);

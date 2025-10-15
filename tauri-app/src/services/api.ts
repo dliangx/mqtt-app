@@ -101,6 +101,7 @@ export const apiService = {
     type: string;
     message: string;
     level: string;
+    raw_data: string;
   }) => api.post<ApiResponse<Alert>>("/alerts", alertData),
 
   markAlertAsRead: (id: number) => api.put<ApiResponse>(`/alerts/${id}/read`),

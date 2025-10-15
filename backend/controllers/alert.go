@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -57,6 +58,7 @@ func CreateAlert(c *gin.Context) {
 		Type     string `json:"type" binding:"required"`
 		Message  string `json:"message" binding:"required"`
 		Level    string `json:"level" binding:"required"`
+		RawData  string `json:"raw_data" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -71,13 +73,38 @@ func CreateAlert(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
 		return
 	}
+	// 获取配置
+	var config models.MessageTypeConfig
+	if err := database.DB.Where("id = ? AND user_id = ?", input.Type, userID).First(&config).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Message type config not found"})
+		return
+	}
+
+	// 解析消息数据
+	parseData, err := parseMessageData(config.Format, input.RawData)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// Convert parseData.Fields map to JSON string
+	parsedDataJSON, err := json.Marshal(parseData.Fields)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal parsed data"})
+		return
+	}
 
 	alert := models.Alert{
-		DeviceID:  input.DeviceID,
-		Type:      input.Type,
-		Message:   input.Message,
-		Level:     input.Level,
-		Timestamp: time.Now().Unix(),
+		DeviceID:   input.DeviceID,
+		Type:       input.Type,
+		Message:    input.Message,
+		Level:      input.Level,
+		Timestamp:  time.Now().Unix(),
+		RawData:    input.RawData,
+		ParsedData: string(parsedDataJSON),
 	}
 
 	result := database.DB.Create(&alert)

@@ -97,8 +97,13 @@ export const apiService = {
       .get<ApiResponse<{ count: number }>>('/alerts/unread')
       .then((response: any) => (response.data as any)?.count || 0),
 
-  createAlert: (alertData: { device_id: number; type: string; message: string; level: string }) =>
-    api.post<ApiResponse<Alert>>('/alerts', alertData),
+  createAlert: (alertData: {
+    device_id: number;
+    type: string;
+    message: string;
+    level: string;
+    raw_data: string;
+  }) => api.post<ApiResponse<Alert>>('/alerts', alertData),
 
   markAlertAsRead: (id: number) => api.put<ApiResponse>(`/alerts/${id}/read`),
 
@@ -121,6 +126,9 @@ export const apiService = {
   generateTestData: () => api.post<ApiResponse<GenerateTestDataResponse>>('/data/generate-test'),
 
   pushTestData: (data: any) => api.post<ApiResponse>('/data/push-test', data),
+
+  // Generate trajectory tracking data
+  generateTrajectoryData: () => api.post<ApiResponse<any>>('/message-types/geo-test-data'),
 
   // Users
   getUsers: () => api.get<ApiResponse<User[]>>('/users').then((response) => response.data),

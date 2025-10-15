@@ -578,7 +578,7 @@ func TestMessageFormat(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func CreateAndGetGeoTestData(c *gin.Context) {
+func CreateGeoConfig(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	// 创建设备地理信息上报配置
@@ -603,16 +603,16 @@ func CreateAndGetGeoTestData(c *gin.Context) {
 
 	formatJSON, err := json.Marshal(geoLocationFormat)
 	if err != nil {
-		fmt.Println("error", "Failed to create format JSON")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create format JSON"})
 		return
 	}
 
 	// 如果设置为默认配置，取消其他默认配置
-	database.ConnectDatabase()
+
 	if err := database.DB.Model(&models.MessageTypeConfig{}).
 		Where("user_id = ? AND is_default = ?", userID, true).
 		Update("is_default", false).Error; err != nil {
-		fmt.Println("error", "Failed to update default configs")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update default configs"})
 		return
 	}
 
@@ -626,20 +626,32 @@ func CreateAndGetGeoTestData(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&config).Error; err != nil {
-		fmt.Println("error", "Failed to create message type config")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message type config"})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "消息类型配置创建成功",
+		"data":    config,
+	})
+}
 
+func GetGeoTestData(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	var config models.MessageTypeConfig
+	if err := database.DB.Where("user_id = ? AND name = ?", userID, "设备地理信息上报").First(&config).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get message type config"})
+		return
+	}
 	// 生成10条测试数据
-	testData := generateGeoTestData(config.ID, userID)
+	testData := generateGeoTestData(config.UserID, config.ID)
 
-	// 将测试数据转换为JSON字符串并打印
-	jsonData, err := json.MarshalIndent(testData, "", "  ")
-	if err != nil {
-		fmt.Println("Error marshaling test data to JSON:", err)
-		return
-	}
-	fmt.Println(string(jsonData))
+	// 返回测试数据
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "轨迹追踪数据生成成功",
+		"data":    testData,
+	})
 }
 
 // generateGeoLocationTestData 生成设备地理信息测试数据
