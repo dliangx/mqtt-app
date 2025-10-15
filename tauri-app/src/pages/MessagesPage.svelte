@@ -124,9 +124,21 @@
     }
 
     function formatTimestamp(timestamp) {
-        const date = new Date(
-            typeof timestamp === "string" ? timestamp : timestamp,
-        );
+        let date;
+
+        // 处理不同类型的时间戳
+        if (typeof timestamp === "string") {
+            date = new Date(timestamp);
+        } else if (typeof timestamp === "number") {
+            // 如果是数字时间戳，检查是否是毫秒级
+            date =
+                timestamp > 1000000000000
+                    ? new Date(timestamp)
+                    : new Date(timestamp * 1000);
+        } else {
+            date = new Date();
+        }
+
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
