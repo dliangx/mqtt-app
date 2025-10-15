@@ -61,8 +61,8 @@
                 // 创建标记元素
                 const el = document.createElement("div");
                 el.className = "device-marker";
-                el.style.width = "24px";
-                el.style.height = "24px";
+                el.style.width = "16px";
+                el.style.height = "16px";
                 el.style.borderRadius = "50%";
                 el.style.backgroundColor = getStatusColor(device.status);
                 el.style.border = "3px solid white";
@@ -71,7 +71,7 @@
                 el.style.display = "flex";
                 el.style.alignItems = "center";
                 el.style.justifyContent = "center";
-                el.style.fontSize = "12px";
+                el.style.fontSize = "10px";
                 el.style.fontWeight = "bold";
                 el.style.color = "white";
 
