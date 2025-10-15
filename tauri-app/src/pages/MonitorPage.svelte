@@ -388,11 +388,6 @@
         font-size: 13px;
     }
 
-    .nav-icon {
-        font-size: 14px;
-        margin-right: 6px;
-    }
-
     .nav-btn {
         background: white;
         border: 1px solid #1976d2;
@@ -479,10 +474,6 @@
         color: white;
         transform: translateY(-1px);
         box-shadow: 0 2px 6px rgba(25, 118, 210, 0.2);
-    }
-
-    .history-icon {
-        font-size: 13px;
     }
 
     .alert-snackbar {
