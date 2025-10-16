@@ -6,8 +6,7 @@
     export let devices = [];
     export let onMarkerClick = () => {};
     export let height = "400px";
-    export let accessToken =
-        "pk.eyJ1Ijoic2FtbGVhcm5lciIsImEiOiJja2IzNTFsZXMwaG44MzRsbWplbGNtNHo0In0.BmjC6OX6egwKdm0fAmN_Nw";
+    export let accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
     // 路线导航相关状态
     let currentLocation = null;
