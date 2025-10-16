@@ -324,7 +324,7 @@ export default function DevicesPage() {
         </Box>
 
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <TableContainer sx={{ maxHeight: 600 }}>
+          <TableContainer>
             <Table stickyHeader aria-label="设备列表">
               <TableHead>
                 <TableRow>
