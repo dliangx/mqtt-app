@@ -9,6 +9,13 @@ import { apiService } from 'src/services/api';
 
 import { useFullscreen } from 'src/hooks/use-fullscreen';
 
+declare global {
+  interface Window {
+    AMap: any;
+    mapboxgl: any;
+  }
+}
+
 // 地图源类型定义
 type MapSource = 'amap' | 'mapbox';
 
@@ -89,7 +96,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     // 暴露导航方法给父组件
     React.useImperativeHandle(ref, () => ({
       navigateToDevice: (device: Device) => {
-        showRouteToDevice(device);
+        if (currentMapSource === 'amap') {
+          showRouteToDevice(device);
+        } else {
+          showMapboxRouteToDevice(device);
+        }
       },
       clearNavigation: () => {
         clearRoute();
@@ -510,7 +521,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         e && e.preventDefault && e.preventDefault();
         console.log('导航按钮点击事件触发');
         // 在当前页面显示路线规划
-        showRouteToDevice(device);
+        if (currentMapSource === 'amap') {
+          showRouteToDevice(device);
+        } else {
+          showMapboxRouteToDevice(device);
+        }
         return false;
       });
 
@@ -609,9 +624,130 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }
     };
 
+    const showMapboxRouteToDevice = async (device: Device) => {
+      console.log('开始 Mapbox 路线规划到设备:', device.name);
+      if (!mapboxInstanceRef.current) return;
+
+      // 清除之前的路线
+      clearRoute();
+
+      let startPoint: [number, number];
+
+      // 优先使用用户真实位置，如果没有则使用地图中心点
+      if (userLocation) {
+        startPoint = [userLocation.lng, userLocation.lat];
+        console.log('使用用户真实位置作为起点:', startPoint);
+      } else {
+        // 尝试获取用户位置
+        try {
+          const location = await getUserCurrentLocation();
+          startPoint = [location.lng, location.lat];
+          console.log('成功获取用户位置作为起点:', startPoint);
+        } catch (error) {
+          // 获取位置失败，使用地图中心点
+          const mapCenter = mapboxInstanceRef.current.getCenter();
+          startPoint = [mapCenter.lng, mapCenter.lat];
+          console.log('使用地图中心点作为起点:', startPoint);
+        }
+      }
+
+      const endPoint: [number, number] = [Number(device.longitude), Number(device.latitude)];
+
+      try {
+        // 使用 Mapbox Directions API 进行路线规划
+        const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startPoint[0]},${startPoint[1]};${endPoint[0]},${endPoint[1]}?geometries=geojson&access_token=${accessToken}`;
+
+        const response = await fetch(url);
+        const result = await response.json();
+
+        console.log('Mapbox 路线规划API响应:', result);
+
+        if (result.routes && result.routes.length > 0) {
+          const route = result.routes[0];
+          console.log(
+            'Mapbox 路线规划成功，距离:',
+            route.distance,
+            '米，时间:',
+            route.duration,
+            '秒'
+          );
+
+          const map = mapboxInstanceRef.current;
+
+          // 添加路线源
+          if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeSource('route');
+          }
+
+          map.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: route.geometry,
+            },
+          });
+
+          // 添加路线图层
+          map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#1976d2',
+              'line-width': 6,
+              'line-opacity': 0.8,
+            },
+          });
+
+          // 显示导航信息
+          setNavigationInfo({
+            visible: true,
+            device,
+            routeInfo: {
+              distance: parseInt(route.distance),
+              time: parseInt(route.duration),
+              tolls: 0, // Mapbox API 不提供收费信息
+              toll_distance: 0,
+            },
+          });
+
+          // 调整地图视图以显示完整路线
+          const bounds = new window.mapboxgl.LngLatBounds();
+          route.geometry.coordinates.forEach((coord: [number, number]) => {
+            bounds.extend(coord);
+          });
+          map.fitBounds(bounds, { padding: 50 });
+        } else {
+          console.error('Mapbox 路线规划失败:', result);
+          alert(`路线规划失败: ${result.message || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('Mapbox 路线规划请求失败:', error);
+        alert('路线规划请求失败，请检查网络连接');
+      }
+    };
+
     const clearRoute = () => {
       if (routePolylineRef.current) {
-        routePolylineRef.current.setMap(null);
+        if (currentMapSource === 'amap') {
+          routePolylineRef.current.setMap(null);
+        } else {
+          // For Mapbox, remove the route source and layer
+          const map = mapboxInstanceRef.current;
+          if (map) {
+            if (map.getSource('route')) {
+              map.removeLayer('route');
+              map.removeSource('route');
+            }
+          }
+        }
         routePolylineRef.current = null;
       }
       setNavigationInfo({
@@ -909,7 +1045,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           // 强制重排以确保容器尺寸正确
           container.offsetHeight;
 
-          const mapboxMap = new mapboxgl.Map({
+          const mapboxMap = new window.mapboxgl.Map({
             container: 'mapbox-container',
             style: 'mapbox://styles/mapbox/streets-v12',
             center: mapViewState.center,
@@ -930,11 +1066,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           mapboxInstanceRef.current = mapboxMap;
 
           // 添加导航控件
-          mapboxMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+          mapboxMap.addControl(new window.mapboxgl.NavigationControl(), 'top-right');
 
           // 添加比例尺
           mapboxMap.addControl(
-            new mapboxgl.ScaleControl({
+            new window.mapboxgl.ScaleControl({
               maxWidth: 100,
               unit: 'metric',
             }),
