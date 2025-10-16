@@ -1,13 +1,12 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import type { Device } from 'src/types';
 import type { Geofence, GeofenceViolation } from 'src/utils/geofence';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-
-import { checkGeofenceViolations, defaultGeofenceStyle, generateId } from 'src/utils/geofence';
-
-import { apiService } from 'src/services/api';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 
 import { useFullscreen } from 'src/hooks/use-fullscreen';
+
+import { generateId, defaultGeofenceStyle } from 'src/utils/geofence';
 
 declare global {
   interface Window {
@@ -66,7 +65,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const mouseToolRef = useRef<any>(null);
     const prevDevicesJsonRef = useRef<string>('');
     const routePolylineRef = useRef<any>(null);
-    const [navigationInfo, setNavigationInfo] = useState<{
+    const [, setNavigationInfo] = useState<{
       visible: boolean;
       device: Device | null;
       routeInfo: any;
@@ -107,56 +106,58 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       clearNavigation: () => {
         clearRoute();
       },
-      getUserLocation: () => {
-        return getUserCurrentLocation();
-      },
+      getUserLocation: () => getUserCurrentLocation(),
     }));
 
     // 获取用户当前位置
-    const getUserCurrentLocation = useCallback((): Promise<{ lat: number; lng: number }> => {
-      return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          const error = '浏览器不支持地理位置定位';
-          setLocationError(error);
-          reject(new Error(error));
-          return;
-        }
-
-        setLocationError('');
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const location = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            };
-            setUserLocation(location);
-            resolve(location);
-          },
-          (error) => {
-            let errorMessage = '获取位置失败';
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                errorMessage = '用户拒绝了位置访问权限';
-                break;
-              case error.POSITION_UNAVAILABLE:
-                errorMessage = '无法获取位置信息';
-                break;
-              case error.TIMEOUT:
-                errorMessage = '获取位置超时';
-                break;
-            }
-            setLocationError(errorMessage);
-            reject(new Error(errorMessage));
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000,
+    const getUserCurrentLocation = useCallback(
+      (): Promise<{ lat: number; lng: number }> =>
+        new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            const error = '浏览器不支持地理位置定位';
+            setLocationError(error);
+            reject(new Error(error));
+            return;
           }
-        );
-      });
-    }, []);
+
+          setLocationError('');
+
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const location = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              setUserLocation(location);
+              resolve(location);
+            },
+            (error) => {
+              let errorMessage = '获取位置失败';
+              switch (error.code) {
+                case error.PERMISSION_DENIED:
+                  errorMessage = '用户拒绝了位置访问权限';
+                  break;
+                case error.POSITION_UNAVAILABLE:
+                  errorMessage = '无法获取位置信息';
+                  break;
+                case error.TIMEOUT:
+                  errorMessage = '获取位置超时';
+                  break;
+                default:
+                  errorMessage = '未知错误';
+              }
+              setLocationError(errorMessage);
+              reject(new Error(errorMessage));
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 300000,
+            }
+          );
+        }),
+      []
+    );
 
     // 初始化时尝试获取用户位置
     useEffect(() => {
@@ -193,11 +194,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       };
       document.head.appendChild(script);
 
-      return () => {
-        if (document.getElementById(scriptId)) {
-          document.head.removeChild(script);
-        }
-      };
+      if (document.getElementById(scriptId)) {
+        document.head.removeChild(script);
+      }
     }, [currentMapSource]);
 
     // 当设备数据变化时更新地图标记和检查围栏违规
@@ -341,7 +340,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           const zoom = map.getZoom();
           setMapViewState({
             center: [center.lng, center.lat],
-            zoom: zoom,
+            zoom,
           });
         });
 
@@ -479,8 +478,8 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           });
 
           marker.on('click', (e: any) => {
-            e && e.stopPropagation && e.stopPropagation();
-            e && e.preventDefault && e.preventDefault();
+            e?.stopPropagation?.();
+            e?.preventDefault?.();
             console.log('设备标记点击事件触发');
             setSelectedDevice(device);
             setDeviceDialogOpen(true);
@@ -529,6 +528,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           const mapCenter = mapInstanceRef.current.getCenter();
           startPoint = `${mapCenter.lng},${mapCenter.lat}`;
           console.log('使用地图中心点作为起点:', startPoint);
+          console.log(error);
         }
       }
 
@@ -613,7 +613,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           const location = await getUserCurrentLocation();
           startPoint = [location.lng, location.lat];
           console.log('成功获取用户位置作为起点:', startPoint);
-        } catch (error) {
+        } catch {
           // 获取位置失败，使用地图中心点
           const mapCenter = mapboxInstanceRef.current.getCenter();
           startPoint = [mapCenter.lng, mapCenter.lat];
@@ -826,37 +826,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       });
     };
 
-    const checkViolations = useCallback(async () => {
-      if (!geofences.length || !devices.length) {
-        return;
-      }
-
-      const validDevices = devices.filter(
-        (device) => isValidLongitude(device.longitude) && isValidLatitude(device.latitude)
-      );
-
-      const newViolations = checkGeofenceViolations(validDevices, geofences);
-
-      // 发送新的违规警报到服务器
-      for (const violation of newViolations) {
-        if (onGeofenceViolation) {
-          onGeofenceViolation(violation);
-        }
-
-        try {
-          await apiService.createAlert({
-            device_id: violation.deviceId,
-            type: 'geofence_violation',
-            message: violation.message,
-            level: 'warning',
-            raw_data: JSON.stringify(violation),
-          });
-        } catch (error) {
-          console.error('Failed to create alert:', error);
-        }
-      }
-    }, [devices, geofences, onGeofenceViolation]);
-
     const handleGeofenceCreate = (geofenceData: Omit<Geofence, 'id'>) => {
       const newGeofence: Geofence = {
         ...geofenceData,
@@ -1012,9 +981,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           container.style.width = '100%';
           container.style.height = '100%';
 
-          // 强制重排以确保容器尺寸正确
-          container.offsetHeight;
-
           const mapboxMap = new window.mapboxgl.Map({
             container: 'mapbox-container',
             style: 'mapbox://styles/mapbox/streets-v12',
@@ -1028,7 +994,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             const zoom = mapboxMap.getZoom();
             setMapViewState({
               center: [center.lng, center.lat],
-              zoom: zoom,
+              zoom,
             });
           });
 
@@ -1220,14 +1186,14 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               const zoom = mapInstanceRef.current.getZoom();
               setMapViewState({
                 center: [center.lng, center.lat],
-                zoom: zoom,
+                zoom,
               });
             } else if (currentMapSource === 'mapbox' && mapboxInstanceRef.current) {
               const center = mapboxInstanceRef.current.getCenter();
               const zoom = mapboxInstanceRef.current.getZoom();
               setMapViewState({
                 center: [center.lng, center.lat],
-                zoom: zoom,
+                zoom,
               });
             }
 
@@ -1244,6 +1210,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           }}
           style={{
             position: 'absolute',
+
             top: 100,
             left: 10,
             zIndex: 1000,
@@ -1355,7 +1322,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               background: 'white',
               borderRadius: '8px',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              zIndex: fullscreen ? 1300 : 1000,
+              zIndex: 1000,
               minWidth: '400px',
               maxWidth: '500px',
               maxHeight: '80vh',

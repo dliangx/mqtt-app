@@ -224,6 +224,12 @@
                         class="alert-card"
                         class:read={alert.read}
                         on:click={() => showAlertDetail(alert)}
+                        on:keydown={(e) => {
+                            if (e.key === "Enter" || e.key === " ")
+                                showAlertDetail(alert);
+                        }}
+                        role="button"
+                        tabindex="0"
                     >
                         <div class="alert-content">
                             <div class="alert-header">
@@ -264,13 +270,19 @@
 
             <!-- Detail Modal -->
             {#if showDetailModal && selectedAlert}
-                <div class="modal-overlay" on:click={closeDetailModal}>
-                    <div class="modal-content" on:click|stopPropagation>
+                <div
+                    class="modal-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-title"
+                >
+                    <div class="modal-content" role="document">
                         <div class="modal-header">
-                            <h3>消息详情</h3>
+                            <h3 id="modal-title">消息详情</h3>
                             <button
                                 class="close-btn"
-                                on:click={closeDetailModal}>×</button
+                                on:click={closeDetailModal}
+                                aria-label="关闭对话框">×</button
                             >
                         </div>
 
@@ -279,7 +291,7 @@
                                 <h4>基本信息</h4>
                                 <div class="detail-grid">
                                     <div class="detail-item">
-                                        <label>设备名称:</label>
+                                        <strong>设备名称:</strong>
                                         <span
                                             >{getDeviceName(
                                                 selectedAlert,
@@ -287,7 +299,7 @@
                                         >
                                     </div>
                                     <div class="detail-item">
-                                        <label>严重程度:</label>
+                                        <strong>严重程度:</strong>
                                         <span
                                             class="severity-badge"
                                             style="background-color: {getSeverityColor(
@@ -300,11 +312,11 @@
                                         </span>
                                     </div>
                                     <div class="detail-item">
-                                        <label>消息内容:</label>
+                                        <strong>消息内容:</strong>
                                         <span>{selectedAlert.message}</span>
                                     </div>
                                     <div class="detail-item">
-                                        <label>时间:</label>
+                                        <strong>时间:</strong>
                                         <span
                                             >{formatTimestamp(
                                                 selectedAlert.timestamp,
@@ -538,13 +550,6 @@
         display: flex;
         align-items: flex-start;
         gap: 12px;
-    }
-
-    .detail-item label {
-        font-weight: 500;
-        color: #666;
-        min-width: 80px;
-        font-size: 14px;
     }
 
     .detail-item span {

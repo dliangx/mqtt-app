@@ -70,7 +70,7 @@ const formatTimestamp = (timestamp: number) =>
 
 // ----------------------------------------------------------------------
 
-export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertListProps) {
+export default function AlertList({ alerts, onRefresh }: AlertListProps) {
   const { enqueueSnackbar } = useSnackbar();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -107,7 +107,6 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>, id: number) => {
     event.stopPropagation();
-    const selectedIndex = selected.indexOf(id);
     let newSelected: number[] = [];
 
     if (event.target.checked) {
@@ -116,11 +115,6 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
       newSelected = selected.filter((selectedId) => selectedId !== id);
     }
     setSelected(newSelected);
-  };
-
-  const handleRowClick = (alert: Alert) => {
-    // Disable row click for selection, rely only on checkboxes
-    // onAlertClick?.(alert);
   };
 
   const handleMarkAsRead = async (alertIds: number[]) => {

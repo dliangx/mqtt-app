@@ -1,7 +1,7 @@
 import type { Device } from 'src/types';
 import type { GeofenceViolation } from 'src/utils/geofence';
 
-import React, { useMemo, useCallback, useRef, useState } from 'react';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
 
 import { Box } from '@mui/material';
 
@@ -13,8 +13,7 @@ interface MonitorPageProps {
 
 const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
   // 使用 useMemo 来优化 devices 数组，避免不必要的重新渲染
-  const devicesJson = JSON.stringify(rawDevices);
-  const devices = useMemo(() => rawDevices, [devicesJson]);
+  const devices = useMemo(() => rawDevices, [rawDevices]);
   const [, setAlertOpen] = useState(false);
   const [, setAlertMessage] = useState('');
   const mapRef = useRef<any>(null);
