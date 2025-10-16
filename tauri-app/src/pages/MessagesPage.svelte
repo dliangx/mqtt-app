@@ -10,6 +10,8 @@
 
     let testMode = false;
     let testAlerts = [];
+    let selectedAlert = null;
+    let showDetailModal = false;
 
     onMount(() => {
         // 生成测试数据
@@ -49,6 +51,7 @@
                     updated_at: new Date(
                         Date.now() - i * 3600000,
                     ).toISOString(),
+
                     device: {
                         id: deviceIndex + 1,
                         name: devices[deviceIndex],
@@ -80,6 +83,48 @@
     });
 
     $: displayAlerts = testMode ? testAlerts : alerts;
+
+    // 显示警报详情
+    function showAlertDetail(alert) {
+        selectedAlert = alert;
+        showDetailModal = true;
+
+        // 如果消息未读，标记为已读
+        if (!alert.read) {
+            markAsRead(alert.id);
+        }
+    }
+
+    // 关闭详情模态框
+    function closeDetailModal() {
+        showDetailModal = false;
+        selectedAlert = null;
+    }
+
+    // 解析 parsed_data
+    function getParsedData(alert) {
+        if (!alert.parsed_data) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(alert.parsed_data);
+        } catch (error) {
+            console.error("Failed to parse parsed_data:", error);
+            return null;
+        }
+    }
+
+    // 格式化字段值
+    function formatFieldValue(value) {
+        if (value === null || value === undefined) {
+            return "null";
+        }
+        if (typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+        }
+        return String(value);
+    }
 
     // 获取设备名称
     function getDeviceName(alert) {
@@ -175,7 +220,11 @@
         {#if displayAlerts.length > 0}
             <div class="alerts-list">
                 {#each displayAlerts as alert}
-                    <div class="alert-card" class:read={alert.read}>
+                    <div
+                        class="alert-card"
+                        class:read={alert.read}
+                        on:click={() => showAlertDetail(alert)}
+                    >
                         <div class="alert-content">
                             <div class="alert-header">
                                 <div class="device-info">
@@ -212,6 +261,72 @@
                     </div>
                 {/each}
             </div>
+
+            <!-- Detail Modal -->
+            {#if showDetailModal && selectedAlert}
+                <div class="modal-overlay" on:click={closeDetailModal}>
+                    <div class="modal-content" on:click|stopPropagation>
+                        <div class="modal-header">
+                            <h3>消息详情</h3>
+                            <button
+                                class="close-btn"
+                                on:click={closeDetailModal}>×</button
+                            >
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="detail-section">
+                                <h4>基本信息</h4>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <label>设备名称:</label>
+                                        <span
+                                            >{getDeviceName(
+                                                selectedAlert,
+                                            )}</span
+                                        >
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>严重程度:</label>
+                                        <span
+                                            class="severity-badge"
+                                            style="background-color: {getSeverityColor(
+                                                selectedAlert.level,
+                                            )}"
+                                        >
+                                            {getSeverityText(
+                                                selectedAlert.level,
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>消息内容:</label>
+                                        <span>{selectedAlert.message}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>时间:</label>
+                                        <span
+                                            >{formatTimestamp(
+                                                selectedAlert.timestamp,
+                                            )}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            {#if selectedAlert.parsed_data}
+                                <div class="detail-section">
+                                    <h4>解析数据</h4>
+                                    <div class="parsed-data-container">
+                                        <pre
+                                            class="parsed-data-content">{selectedAlert.parsed_data}</pre>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/if}
         {:else}
             <div class="empty-state">
                 <p>{loading ? "加载中..." : "暂无消息"}</p>
@@ -275,6 +390,7 @@
         border: 1px solid #e0e0e0;
         border-radius: 8px;
         transition: all 0.2s ease;
+        cursor: pointer;
     }
 
     .alert-card.read {
@@ -333,6 +449,129 @@
         font-size: 14px;
         color: #333;
         line-height: 1.4;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #666;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+    }
+
+    .close-btn:hover {
+        background-color: #f5f5f5;
+    }
+
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        max-height: calc(80vh - 80px);
+    }
+
+    .detail-section {
+        margin-bottom: 24px;
+    }
+
+    .detail-section h4 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .detail-item label {
+        font-weight: 500;
+        color: #666;
+        min-width: 80px;
+        font-size: 14px;
+    }
+
+    .detail-item span {
+        flex: 1;
+        font-size: 14px;
+        color: #333;
+        word-break: break-word;
+    }
+
+    .parsed-data-container {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 8px;
+    }
+
+    .parsed-data-content {
+        margin: 0;
+        font-size: 13px;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        color: #495057;
+        white-space: pre-wrap;
+        word-break: break-all;
+        line-height: 1.4;
+        max-height: 300px;
+        overflow-y: auto;
     }
 
     .alert-footer {

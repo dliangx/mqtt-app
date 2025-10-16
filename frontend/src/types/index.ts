@@ -65,7 +65,7 @@ export interface Device {
 }
 
 export interface Alert {
-  id: number;
+  ID: number;
   device_id: number;
   type: string;
   message: string;
@@ -74,7 +74,6 @@ export interface Alert {
   timestamp: number;
   created_at: string;
   updated_at: string;
-  device?: Device;
   raw_data?: string;
   parsed_data?: string;
 }

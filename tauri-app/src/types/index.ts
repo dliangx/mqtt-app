@@ -17,13 +17,13 @@ export interface Alert {
   device_id: number;
   type: string;
   message: string;
-  level: "critical" | "warning" | "info";
-  severity: string;
+  level: "critical" | "high" | "medium" | "low";
   read: boolean;
   timestamp: number;
   created_at: string;
   updated_at: string;
-  device?: Device;
+  raw_data?: string;
+  parsed_data?: string;
 }
 
 export interface DeviceData {

@@ -98,7 +98,7 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelected = paginatedAlerts.map((alert) => alert.id);
+      const newSelected = filteredAlerts.map((alert) => alert.ID);
       setSelected(newSelected);
       return;
     }
@@ -211,8 +211,8 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
             <TableRow>
               <TableCell padding="checkbox">
                 <Checkbox
-                  indeterminate={selected.length > 0 && selected.length < paginatedAlerts.length}
-                  checked={paginatedAlerts.length > 0 && selected.length === paginatedAlerts.length}
+                  indeterminate={selected.length > 0 && selected.length < filteredAlerts.length}
+                  checked={filteredAlerts.length > 0 && selected.length === filteredAlerts.length}
                   onChange={handleSelectAllClick}
                 />
               </TableCell>
@@ -226,19 +226,17 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
           </TableHead>
           <TableBody>
             {paginatedAlerts.map((alert) => {
-              const isItemSelected = isSelected(alert.id);
+              const isItemSelected = isSelected(alert.ID);
               return (
-                <TableRow key={alert.id} hover selected={isItemSelected}>
+                <TableRow key={alert.ID} hover selected={isItemSelected}>
                   <TableCell padding="checkbox">
                     <Checkbox
                       checked={isItemSelected}
-                      onChange={(event) => handleCheckboxChange(event, alert.id)}
+                      onChange={(event) => handleCheckboxChange(event, alert.ID)}
                     />
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {alert.device?.name || `设备 ${alert.device_id}`}
-                    </Typography>
+                    <Typography variant="body2">{`设备 ${alert.device_id}`}</Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{alert.type}</Typography>
