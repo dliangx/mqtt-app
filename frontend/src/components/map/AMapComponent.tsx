@@ -90,6 +90,8 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       center: [116.397428, 39.90923],
       zoom: 10,
     });
+    const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
+    const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
     const { fullscreen, elementRef, toggleFullscreen } = useFullscreen();
 
@@ -480,6 +482,8 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             e && e.stopPropagation && e.stopPropagation();
             e && e.preventDefault && e.preventDefault();
             console.log('设备标记点击事件触发');
+            setSelectedDevice(device);
+            setDeviceDialogOpen(true);
             if (onMarkerClick) {
               onMarkerClick(device);
             }
@@ -496,40 +500,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       } catch (error) {
         handleMapError(error, 'updateMarkers');
       }
-    };
-
-    const createNavigationButton = (device: Device) => {
-      const position = [device.longitude, device.latitude];
-      const button = new window.AMap.Marker({
-        position,
-        offset: new window.AMap.Pixel(30, -30),
-        content: `
-        <div style="
-          background: white;
-          border-radius: 4px;
-          padding: 4px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          cursor: pointer;
-        ">
-          <div style="color: #1976d2; font-size: 16px;">🚗</div>
-        </div>
-      `,
-      });
-
-      button.on('click', (e: any) => {
-        e && e.stopPropagation && e.stopPropagation();
-        e && e.preventDefault && e.preventDefault();
-        console.log('导航按钮点击事件触发');
-        // 在当前页面显示路线规划
-        if (currentMapSource === 'amap') {
-          showRouteToDevice(device);
-        } else {
-          showMapboxRouteToDevice(device);
-        }
-        return false;
-      });
-
-      return button;
     };
 
     const showRouteToDevice = async (device: Device) => {
@@ -1138,6 +1108,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             // 添加点击事件
             el.addEventListener('click', (e) => {
               e.stopPropagation();
+              e.preventDefault();
+              setSelectedDevice(device);
+              setDeviceDialogOpen(true);
               if (onMarkerClick) {
                 onMarkerClick(device);
               }
@@ -1172,19 +1145,27 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     // 获取状态颜色
 
     return (
-      <div style={{ position: 'relative', height }} ref={elementRef}>
+      <div
+        style={{
+          position: 'relative',
+          height,
+          contain: 'layout style paint',
+        }}
+        ref={elementRef}
+      >
         {/* Mapbox 容器 */}
         <div
           id="mapbox-container"
           style={{
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
             width: '100%',
             height: '100%',
             overflow: 'hidden',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            zIndex: 1,
             display: currentMapSource === 'mapbox' ? 'block' : 'none',
+            position: 'absolute',
           }}
         />
 
@@ -1192,10 +1173,15 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         <div
           ref={mapRef}
           style={{
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
             width: '100%',
             height: '100%',
             overflow: 'hidden',
             display: currentMapSource === 'amap' ? 'block' : 'none',
+            position: 'absolute',
           }}
         />
 
@@ -1276,7 +1262,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           }}
           title={`切换到${currentMapSource === 'amap' ? 'Mapbox' : '高德地图'}`}
         >
-          {currentMapSource === 'amap' ? '🗺️' : '🇨🇳'}
+          {currentMapSource === 'amap' ? '🌍' : '🇨🇳'}
         </button>
 
         {/* 地理围栏工具栏 */}
@@ -1338,65 +1324,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           </div>
         )}
 
-        {/* 导航信息面板 */}
-        {navigationInfo.visible && navigationInfo.device && navigationInfo.routeInfo && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'white',
-              padding: '16px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              zIndex: 1000,
-              minWidth: '250px',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-              }}
-            >
-              <h4 style={{ margin: 0, fontSize: '16px' }}>导航信息</h4>
-              <button
-                onClick={clearRoute}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  color: '#666',
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div
-              style={{
-                fontSize: '14px',
-                color: '#666',
-                marginBottom: '12px',
-              }}
-            >
-              <div>距离: {(navigationInfo.routeInfo.distance / 1000).toFixed(1)} km</div>
-              <div>时间: {Math.ceil(navigationInfo.routeInfo.time / 60)} 分钟</div>
-              {navigationInfo.routeInfo.tolls > 0 && (
-                <div>收费: {navigationInfo.routeInfo.tolls} 元</div>
-              )}
-              {userLocation && (
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                  🎯 从您的位置出发
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* 位置获取状态提示 */}
         {locationError && (
           <div
@@ -1414,6 +1341,163 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             }}
           >
             ⚠️ {locationError}
+          </div>
+        )}
+
+        {/* 设备信息对话框 */}
+        {deviceDialogOpen && selectedDevice && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              zIndex: fullscreen ? 1300 : 1000,
+              minWidth: '400px',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              overflow: 'auto',
+            }}
+          >
+            <div
+              style={{
+                padding: '20px',
+                borderBottom: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>
+                设备信息 - {selectedDevice.name}
+              </h3>
+              <button
+                onClick={() => setDeviceDialogOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '16px',
+                }}
+              >
+                <h4 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
+                  {selectedDevice.name}
+                </h4>
+                <span
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    backgroundColor:
+                      selectedDevice.status === 'online'
+                        ? '#4caf50'
+                        : selectedDevice.status === 'offline'
+                          ? '#f44336'
+                          : selectedDevice.status === 'warning'
+                            ? '#ff9800'
+                            : '#9e9e9e',
+                    color: 'white',
+                  }}
+                >
+                  {selectedDevice.status === 'online'
+                    ? '在线'
+                    : selectedDevice.status === 'offline'
+                      ? '离线'
+                      : selectedDevice.status === 'warning'
+                        ? '警告'
+                        : selectedDevice.status}
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Topic</div>
+                <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                  {selectedDevice.topic || '未设置'}
+                </div>
+              </div>
+
+              {selectedDevice.longitude && selectedDevice.latitude && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+                    位置坐标
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                    {Number(selectedDevice.longitude).toFixed(6)},{' '}
+                    {Number(selectedDevice.latitude).toFixed(6)}
+                  </div>
+                </div>
+              )}
+
+              {selectedDevice.address && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>地址</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                    {selectedDevice.address}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: '20px' }}>
+                <button
+                  onClick={() => {
+                    if (selectedDevice.longitude && selectedDevice.latitude) {
+                      if (currentMapSource === 'amap') {
+                        showRouteToDevice(selectedDevice);
+                      } else {
+                        showMapboxRouteToDevice(selectedDevice);
+                      }
+                      setDeviceDialogOpen(false);
+                    }
+                  }}
+                  disabled={!selectedDevice.longitude || !selectedDevice.latitude}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid #1976d2',
+                    borderRadius: '4px',
+                    backgroundColor:
+                      !selectedDevice.longitude || !selectedDevice.latitude ? '#f5f5f5' : '#1976d2',
+                    color: !selectedDevice.longitude || !selectedDevice.latitude ? '#999' : 'white',
+                    cursor:
+                      !selectedDevice.longitude || !selectedDevice.latitude
+                        ? 'not-allowed'
+                        : 'pointer',
+                    fontSize: '14px',
+                  }}
+                >
+                  导航到此位置
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
