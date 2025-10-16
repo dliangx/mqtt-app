@@ -124,12 +124,35 @@
     }
 
     function handleLogout() {
+        console.log("Logout: Starting logout process");
+
+        // Clear local storage
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        console.log("Logout: Local storage cleared");
+
+        // Update authentication state
         isAuthenticated = false;
+        console.log("Logout: Authentication state updated to false");
+
+        // Clear data
         devices = [];
         alerts = [];
         unreadAlerts = 0;
+        currentTab = 0;
+        console.log("Logout: All data cleared");
+
+        // Clear any existing intervals
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+            console.log("Logout: Interval cleared");
+        }
+
+        console.log("Logout: Process completed");
+
+        // Force reload to ensure clean state
+        window.location.reload();
     }
 
     function handleTabChange(newValue) {

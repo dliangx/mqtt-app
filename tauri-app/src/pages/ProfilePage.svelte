@@ -7,6 +7,10 @@
 
     import { onMount } from "svelte";
     onMount(() => {
+        loadUserData();
+    });
+
+    function loadUserData() {
         try {
             const userData = localStorage.getItem("user");
             if (userData) {
@@ -16,10 +20,13 @@
         } catch (error) {
             console.error("Failed to parse user data:", error);
         }
-    });
+    }
 
     function handleLogout() {
+        console.log("ProfilePage: Logout button clicked");
+        // Call parent logout handler to handle all logout logic
         onLogout?.();
+        console.log("ProfilePage: onLogout called");
     }
 
     function handleClearCache() {
@@ -54,7 +61,7 @@
     <div class="actions-section">
         {#if token}
             <div class="divider"></div>
-            <button class="logout-btn" onclick={handleLogout}>
+            <button class="logout-btn" on:click={handleLogout}>
                 <span class="icon">🚪</span>
                 <span>退出登录</span>
             </button>
