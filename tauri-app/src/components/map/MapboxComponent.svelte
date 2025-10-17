@@ -33,31 +33,61 @@
     export let onNavigationError = () => {};
 
     // 获取当前位置
-    function getCurrentLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error("浏览器不支持地理位置服务"));
-                return;
-            }
+    async function getCurrentLocation() {
+        // 首先尝试浏览器定位
+        try {
+            return await new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("浏览器不支持地理位置服务"));
+                    return;
+                }
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    currentLocation = {
-                        longitude: position.coords.longitude,
-                        latitude: position.coords.latitude,
-                    };
-                    resolve(currentLocation);
-                },
-                (error) => {
-                    reject(error);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000,
-                },
-            );
-        });
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            longitude: position.coords.longitude,
+                            latitude: position.coords.latitude,
+                            accuracy: position.coords.accuracy,
+                            source: "browser",
+                        };
+                        console.log("MapboxComponent: 浏览器定位成功");
+                        resolve(currentLocation);
+                    },
+                    (error) => {
+                        console.warn(
+                            "MapboxComponent: 浏览器定位失败:",
+                            error.message,
+                        );
+                        reject(error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000,
+                    },
+                );
+            });
+        } catch (error) {
+            // 浏览器定位失败，使用IP定位作为备用方案
+            console.log("MapboxComponent: 尝试IP定位作为备用方案");
+            try {
+                const response = await fetch("https://ipapi.co/json/");
+                const data = await response.json();
+
+                currentLocation = {
+                    longitude: data.longitude,
+                    latitude: data.latitude,
+                    city: data.city,
+                    country: data.country_name,
+                    source: "ip",
+                };
+                console.log("MapboxComponent: IP定位成功");
+                return currentLocation;
+            } catch (ipError) {
+                console.error("MapboxComponent: IP定位也失败:", ipError);
+                throw new Error("无法获取当前位置，请检查网络连接");
+            }
+        }
     }
 
     // 计算路线
@@ -66,61 +96,125 @@
             await getCurrentLocation();
         }
 
+        // 即使使用IP定位，也计算完整路线
+        if (currentLocation.source === "ip") {
+            console.log("使用IP定位，计算完整路线");
+        }
+
         const origin = [currentLocation.longitude, currentLocation.latitude];
         const dest = [destination.longitude, destination.latitude];
 
+        console.log("开始计算路线:", {
+            origin,
+            destination: dest,
+            accessToken: accessToken ? "已设置" : "未设置",
+        });
+
         try {
-            const response = await fetch(
-                `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${dest[0]},${dest[1]}?geometries=geojson&access_token=${accessToken}`,
-            );
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${dest[0]},${dest[1]}?geometries=geojson&access_token=${accessToken}`;
+            console.log("Mapbox API URL:", url);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                console.error("Mapbox API 响应错误:", {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: url,
+                });
+                throw new Error(
+                    `Mapbox API 错误: ${response.status} ${response.statusText}`,
+                );
+            }
+
             const data = await response.json();
+            console.log("Mapbox API 响应:", data);
 
             if (data.routes && data.routes.length > 0) {
+                console.log("路线计算成功，找到路线:", data.routes[0].geometry);
                 return data.routes[0].geometry;
             } else {
-                throw new Error("无法计算路线");
+                console.error("Mapbox API 返回无路线:", data);
+                throw new Error(
+                    "无法计算路线: " + (data.message || "未知错误"),
+                );
             }
         } catch (error) {
-            console.error("路线计算失败:", error);
-            throw error;
+            console.error("路线计算失败:", {
+                error: error.message,
+                origin,
+                destination: dest,
+                stack: error.stack,
+            });
+
+            // 路线计算失败时，返回直线路径作为备用方案
+            console.log("路线计算失败，使用直线路径作为备用方案");
+            return {
+                type: "LineString",
+                coordinates: [
+                    [currentLocation.longitude, currentLocation.latitude],
+                    [destination.longitude, destination.latitude],
+                ],
+            };
         }
     }
 
     // 显示路线
     function showRoute(geometry) {
-        if (!mapInstance) return;
+        console.log("显示路线:", geometry);
 
-        // 移除现有路线
-        if (mapInstance.getSource(routeSourceId)) {
+        if (!mapInstance) {
+            console.error("无法显示路线: mapInstance 未初始化");
+            return;
+        }
+
+        // 检查是否已存在路线图层
+        if (mapInstance.getLayer(routeLayerId)) {
+            console.log("移除现有路线图层");
             mapInstance.removeLayer(routeLayerId);
+        }
+        if (mapInstance.getSource(routeSourceId)) {
+            console.log("移除现有路线源");
             mapInstance.removeSource(routeSourceId);
         }
 
-        // 添加路线源
-        mapInstance.addSource(routeSourceId, {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                properties: {},
-                geometry: geometry,
-            },
-        });
+        try {
+            // 添加路线源
+            console.log("添加路线源...");
+            mapInstance.addSource(routeSourceId, {
+                type: "geojson",
+                data: {
+                    type: "Feature",
+                    geometry: geometry,
+                    properties: {},
+                },
+            });
 
-        // 添加路线图层
-        mapInstance.addLayer({
-            id: routeLayerId,
-            type: "line",
-            source: routeSourceId,
-            layout: {
-                "line-join": "round",
-                "line-cap": "round",
-            },
-            paint: {
-                "line-color": "#1976d2",
-                "line-width": 5,
-                "line-opacity": 0.8,
-            },
-        });
+            // 添加路线图层
+            console.log("添加路线图层...");
+            mapInstance.addLayer({
+                id: routeLayerId,
+                type: "line",
+                source: routeSourceId,
+                layout: {
+                    "line-join": "round",
+                    "line-cap": "round",
+                },
+                paint: {
+                    "line-color": "#007cbf",
+                    "line-width": 4,
+                    "line-opacity": 0.8,
+                },
+            });
+
+            console.log("路线显示完成");
+        } catch (error) {
+            console.error("显示路线失败:", {
+                error: error.message,
+                geometry: geometry,
+                stack: error.stack,
+            });
+        }
 
         // 添加起点标记
         if (!mapInstance.getSource("origin-marker")) {
@@ -140,7 +234,7 @@
             });
 
             mapInstance.addLayer({
-                id: "origin-marker",
+                id: "origin-layer",
                 type: "circle",
                 source: "origin-marker",
                 paint: {
@@ -170,35 +264,123 @@
 
     // 暴露导航方法给父组件
     export async function navigateToDevice(device) {
-        if (mapInstance && device.longitude && device.latitude) {
-            isNavigating = true;
-            onNavigationStart();
+        console.log("开始导航到设备:", device);
+
+        if (!mapInstance) {
+            console.error("导航失败: mapInstance 未初始化");
+            return;
+        }
+
+        if (!device.longitude || !device.latitude) {
+            console.error("导航失败: 设备坐标无效", {
+                longitude: device.longitude,
+                latitude: device.latitude,
+            });
+            return;
+        }
+
+        isNavigating = true;
+        onNavigationStart();
+
+        try {
+            // 清除之前的导航标记和路线
+            clearRoute();
+            if (navigationMarker) {
+                navigationMarker.remove();
+                navigationMarker = null;
+            }
+
+            // 获取当前位置并计算路线
+            console.log("获取当前位置...");
+            await getCurrentLocation();
+            console.log("当前位置:", currentLocation);
+
+            console.log("计算路线...");
+            const routeGeometry = await calculateRoute(device);
+
+            console.log("显示路线...");
+            // 显示路线
+            showRoute(routeGeometry);
+
+            const destination = [device.longitude, device.latitude];
+            const origin = [
+                currentLocation.longitude,
+                currentLocation.latitude,
+            ];
+
+            console.log("导航参数:", {
+                origin,
+                destination,
+                distance: calculateDistance(origin, destination),
+            });
+
+            // 计算合适的缩放级别以显示整个路线
+            const bounds = new mapboxgl.LngLatBounds();
+            bounds.extend(origin);
+            bounds.extend(destination);
+
+            // 添加导航目标标记
+            const navEl = document.createElement("div");
+            navEl.className = "navigation-target";
+            navEl.innerHTML = `
+                <div class="navigation-pulse"></div>
+                <div class="navigation-center"></div>
+            `;
+
+            navigationMarker = new mapboxgl.Marker({
+                element: navEl,
+                anchor: "center",
+            })
+                .setLngLat(destination)
+                .addTo(mapInstance);
+
+            // 使用fitBounds显示整个路线
+            console.log("执行地图动画...");
+            mapInstance.fitBounds(bounds, {
+                padding: 50,
+                duration: 2000,
+                essential: true,
+            });
+
+            // 监听动画完成事件
+            mapInstance.once("moveend", () => {
+                console.log("地图动画完成");
+                isNavigating = false;
+                onNavigationEnd();
+            });
+
+            // 后备超时（防止moveend事件未触发）
+            const navigationTimeout = setTimeout(() => {
+                console.log("导航超时完成");
+                isNavigating = false;
+                onNavigationEnd();
+            }, 4000);
+
+            // 存储超时ID以便清理
+            if (mapElement) {
+                mapElement.navigationTimeout = navigationTimeout;
+            }
+
+            console.log("导航流程完成");
+        } catch (error) {
+            console.error("导航失败:", {
+                error: error.message,
+                device: device,
+                currentLocation: currentLocation,
+                stack: error.stack,
+            });
+
+            // 如果路线计算失败，使用简单的flyTo直接飞到设备位置
+            console.log("使用备用导航方案 (flyTo)...");
+            const destination = [device.longitude, device.latitude];
 
             try {
-                // 清除之前的导航标记和路线
+                // 清除之前的导航标记
                 clearRoute();
                 if (navigationMarker) {
                     navigationMarker.remove();
                     navigationMarker = null;
                 }
-
-                // 获取当前位置并计算路线
-                await getCurrentLocation();
-                const routeGeometry = await calculateRoute(device);
-
-                // 显示路线
-                showRoute(routeGeometry);
-
-                const destination = [device.longitude, device.latitude];
-                const origin = [
-                    currentLocation.longitude,
-                    currentLocation.latitude,
-                ];
-
-                // 计算合适的缩放级别以显示整个路线
-                const bounds = new mapboxgl.LngLatBounds();
-                bounds.extend(origin);
-                bounds.extend(destination);
 
                 // 添加导航目标标记
                 const navEl = document.createElement("div");
@@ -216,6 +398,7 @@
                     .addTo(mapInstance);
 
                 // 使用fitBounds显示整个路线
+                console.log("执行地图动画...");
                 mapInstance.fitBounds(bounds, {
                     padding: 50,
                     duration: 2000,
@@ -224,12 +407,14 @@
 
                 // 监听动画完成事件
                 mapInstance.once("moveend", () => {
+                    console.log("地图动画完成");
                     isNavigating = false;
                     onNavigationEnd();
                 });
 
                 // 后备超时（防止moveend事件未触发）
                 const navigationTimeout = setTimeout(() => {
+                    console.log("导航超时完成");
                     isNavigating = false;
                     onNavigationEnd();
                 }, 4000);
@@ -238,21 +423,47 @@
                 if (mapElement) {
                     mapElement.navigationTimeout = navigationTimeout;
                 }
+
+                console.log("导航流程完成");
             } catch (error) {
-                console.error("导航失败:", error);
-                // 如果路线计算失败，使用简单的flyTo
-                const destination = [device.longitude, device.latitude];
-                mapInstance.flyTo({
-                    center: destination,
-                    zoom: 14,
-                    duration: 2000,
+                console.error("导航失败:", {
+                    error: error.message,
+                    device: device,
+                    currentLocation: currentLocation,
+                    stack: error.stack,
                 });
 
-                isNavigating = false;
-                onNavigationEnd();
-                // 触发错误回调
-                if (onNavigationError) {
-                    onNavigationError(error.message || "导航失败");
+                // 如果路线计算失败，使用简单的flyTo直接飞到设备位置
+                console.log("使用备用导航方案 (flyTo)...");
+                const destination = [device.longitude, device.latitude];
+
+                try {
+                    // 清除之前的导航标记
+                    clearRoute();
+                    if (navigationMarker) {
+                        navigationMarker.remove();
+                        navigationMarker = null;
+                    }
+
+                    mapInstance.flyTo({
+                        center: destination,
+                        zoom: 14,
+                        duration: 2000,
+                    });
+
+                    isNavigating = false;
+                    onNavigationEnd();
+                    // 触发错误回调，提供更友好的错误信息
+                    if (onNavigationError) {
+                        onNavigationError("导航失败，请稍后重试");
+                    }
+                } catch (flyToError) {
+                    console.error("备用导航方案也失败:", flyToError);
+                    isNavigating = false;
+                    onNavigationEnd();
+                    if (onNavigationError) {
+                        onNavigationError("导航失败，请稍后重试");
+                    }
                 }
             }
         }
@@ -366,14 +577,24 @@
                     })
                         .setLngLat([device.longitude, device.latitude])
                         .setPopup(
-                            new mapboxgl.Popup({ offset: 25 }).setHTML(`
-                                <div class="device-popup">
-                                    <h4>${device.name}</h4>
-                                    <p>状态: ${getStatusText(device.status)}</p>
-                                    <p>坐标: ${Number(device.longitude).toFixed(6)}, ${Number(device.latitude).toFixed(6)}</p>
-                                    ${device.address ? `<p>地址: ${device.address}</p>` : ""}
-                                </div>
-                            `),
+                            new mapboxgl.Popup({ offset: 25 }).setHTML(
+                                '<div class="device-popup">' +
+                                    "<h4>" +
+                                    device.name +
+                                    "</h4>" +
+                                    "<p>状态: " +
+                                    getStatusText(device.status) +
+                                    "</p>" +
+                                    "<p>坐标: " +
+                                    Number(device.longitude).toFixed(6) +
+                                    ", " +
+                                    Number(device.latitude).toFixed(6) +
+                                    "</p>" +
+                                    (device.address
+                                        ? "<p>地址: " + device.address + "</p>"
+                                        : "") +
+                                    "</div>",
+                            ),
                         )
                         .addTo(mapInstance);
 

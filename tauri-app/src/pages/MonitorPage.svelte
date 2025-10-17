@@ -15,6 +15,8 @@
     let navigationCompleteOpen = false;
     let isNavigating = false;
     let isShowingHistory = false;
+    let currentPlatform = "unknown";
+    let currentLocation = null;
 
     function handleMarkerClick(device) {
         selectedDevice = device;
@@ -42,15 +44,26 @@
         alertOpen = false;
     }
 
-    function showNavigationError(deviceName) {
-        alertMessage = `导航到设备 "${deviceName}" 失败，请检查网络连接或位置权限`;
-        alertType = "error";
+    function showAlert(message, type = "info") {
+        alertMessage = message;
+        alertType = type;
         alertOpen = true;
 
         // 提示显示5秒后自动关闭
         setTimeout(() => {
             alertOpen = false;
-        }, 3000);
+        }, 5000);
+    }
+
+    function showNavigationError(deviceName, errorMessage = "") {
+        alertMessage = `导航到设备 "${deviceName}" 失败，请稍后重试`;
+        alertType = "warning";
+        alertOpen = true;
+
+        // 提示显示5秒后自动关闭
+        setTimeout(() => {
+            alertOpen = false;
+        }, 5000);
     }
 
     function getStatusColor(status) {
@@ -79,19 +92,375 @@
         }
     }
 
-    function navigateToDevice() {
+    // 检测平台类型
+    async function detectPlatform() {
+        try {
+            // 检查是否在Tauri环境中
+            if (window.__TAURI__) {
+                try {
+                    // 尝试使用Tauri OS插件
+                    const osModule = await import("@tauri-apps/plugin-os");
+                    const osPlatform = await osModule.platform();
+                    currentPlatform = osPlatform;
+                    console.log("Tauri平台检测成功:", currentPlatform);
+                    return;
+                } catch (error) {
+                    console.warn("Tauri OS插件检测失败:", error.message);
+                    // 继续尝试其他方法
+                }
+            }
+
+            // 回退到用户代理检测
+            console.log("使用用户代理检测平台");
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.includes("windows")) {
+                currentPlatform = "windows";
+            } else if (userAgent.includes("mac")) {
+                currentPlatform = "macos";
+            } else if (
+                userAgent.includes("iphone") ||
+                userAgent.includes("ipad")
+            ) {
+                currentPlatform = "ios";
+            } else if (userAgent.includes("android")) {
+                currentPlatform = "android";
+            } else {
+                currentPlatform = "unknown";
+            }
+            console.log("用户代理检测结果:", currentPlatform);
+        } catch (error) {
+            console.error("平台检测完全失败:", error);
+            currentPlatform = "unknown";
+        }
+    }
+
+    // 获取当前位置
+    async function getCurrentLocation() {
+        try {
+            // 首先检查网络连接
+            if (!navigator.onLine) {
+                throw new Error("设备未连接到互联网，无法进行定位");
+            }
+
+            // 根据平台选择定位策略
+            if (currentPlatform === "ios" || currentPlatform === "android") {
+                // 移动设备：优先使用Tauri GPS定位
+                if (window.__TAURI__) {
+                    try {
+                        // 动态导入Tauri地理定位插件
+                        const geolocationModule = await import(
+                            "@tauri-apps/plugin-geolocation"
+                        );
+
+                        // 检查位置权限
+                        let permissions =
+                            await geolocationModule.checkPermissions();
+
+                        // 如果需要权限，请求权限
+                        if (
+                            permissions.location === "prompt" ||
+                            permissions.location === "prompt-with-rationale"
+                        ) {
+                            permissions =
+                                await geolocationModule.requestPermissions([
+                                    "location",
+                                ]);
+                        }
+
+                        // 如果权限被授予，获取位置
+                        if (permissions.location === "granted") {
+                            const position =
+                                await geolocationModule.getCurrentPosition();
+                            const location = {
+                                longitude: position.coords.longitude,
+                                latitude: position.coords.latitude,
+                                accuracy: position.coords.accuracy,
+                                source: "tauri-geolocation",
+                            };
+                            console.log("使用Tauri GPS定位成功");
+                            return location;
+                        } else {
+                            console.warn("Tauri GPS定位权限被拒绝");
+                            throw new Error("位置权限被拒绝");
+                        }
+                    } catch (tauriError) {
+                        console.warn("Tauri GPS定位失败:", tauriError.message);
+                        // Tauri定位失败，回退到浏览器定位
+                        return await getBrowserLocationWithFallback();
+                    }
+                } else {
+                    // 非Tauri环境的移动设备，使用浏览器定位
+                    return await getBrowserLocationWithFallback();
+                }
+            } else {
+                // 桌面设备：使用浏览器定位
+                return await getBrowserLocationWithFallback();
+            }
+        } catch (error) {
+            console.error("所有定位方案都失败了:", error);
+            console.error("平台信息:", currentPlatform);
+            console.error("用户代理:", navigator.userAgent);
+            showAlert("无法获取当前位置，请检查网络连接或位置权限", "error");
+            return null;
+        }
+    }
+
+    // 浏览器定位带备用方案
+    async function getBrowserLocationWithFallback() {
+        try {
+            const location = await getBrowserLocation();
+            console.log("使用浏览器定位成功");
+            return location;
+        } catch (browserError) {
+            console.warn("浏览器定位失败:", browserError);
+
+            // 如果是权限被拒绝，直接使用IP定位
+            if (
+                browserError.message.includes("denied") ||
+                browserError.code === 1
+            ) {
+                console.log("位置权限被拒绝，使用IP定位");
+                return await getIPLocation();
+            }
+
+            // 其他错误也回退到IP定位
+            console.log("浏览器定位失败，使用IP定位");
+            return await getIPLocation();
+        }
+    }
+
+    // 浏览器定位
+    async function getBrowserLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error("浏览器不支持地理位置服务"));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const location = {
+                        longitude: position.coords.longitude,
+                        latitude: position.coords.latitude,
+                        accuracy: position.coords.accuracy,
+                        source: "browser",
+                    };
+                    currentLocation = location;
+                    resolve(location);
+                },
+                (error) => {
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000,
+                },
+            );
+        });
+    }
+
+    // IP定位
+    async function getIPLocation() {
+        // 检查网络连接
+        if (!navigator.onLine) {
+            throw new Error("设备未连接到互联网，无法进行IP定位");
+        }
+
+        // 多个IP定位服务，按优先级尝试
+        const ipServices = [
+            {
+                url: "https://ipapi.co/json/",
+                parse: (data) => ({
+                    longitude: data.longitude,
+                    latitude: data.latitude,
+                    city: data.city,
+                    country: data.country_name,
+                }),
+            },
+            {
+                url: "https://ipinfo.io/json",
+                parse: (data) => {
+                    const [lat, lon] = data.loc.split(",");
+                    return {
+                        longitude: parseFloat(lon),
+                        latitude: parseFloat(lat),
+                        city: data.city,
+                        country: data.country,
+                    };
+                },
+            },
+            {
+                url: "https://api.ip.sb/geoip",
+                parse: (data) => ({
+                    longitude: data.longitude,
+                    latitude: data.latitude,
+                    city: data.city,
+                    country: data.country,
+                }),
+            },
+            {
+                url: "https://api.ipgeolocation.io/ipgeo?apiKey=demo",
+                parse: (data) => ({
+                    longitude: parseFloat(data.longitude),
+                    latitude: parseFloat(data.latitude),
+                    city: data.city,
+                    country: data.country_name,
+                }),
+            },
+        ];
+
+        for (const service of ipServices) {
+            try {
+                console.log(`尝试IP定位服务: ${service.url}`);
+                const response = await fetch(service.url, {
+                    signal: AbortSignal.timeout(5000), // 5秒超时
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const locationData = service.parse(data);
+
+                // 验证坐标是否有效
+                if (
+                    locationData.longitude &&
+                    locationData.latitude &&
+                    Math.abs(locationData.latitude) <= 90 &&
+                    Math.abs(locationData.longitude) <= 180
+                ) {
+                    const location = {
+                        ...locationData,
+                        source: "ip",
+                        service: service.url,
+                    };
+                    currentLocation = location;
+                    console.log(`IP定位成功: ${service.url}`);
+                    return location;
+                } else {
+                    throw new Error("无效的坐标数据");
+                }
+            } catch (error) {
+                console.warn(`IP定位服务 ${service.url} 失败:`, error);
+                // 继续尝试下一个服务
+            }
+        }
+
+        // 所有服务都失败
+        console.error(
+            "所有IP定位服务都失败了，最后尝试的服务:",
+            ipServices[ipServices.length - 1].url,
+        );
+        console.error("网络状态检查:", {
+            online: navigator.onLine,
+            userAgent: navigator.userAgent,
+        });
+        throw new Error("所有IP定位服务都无法获取位置信息，请检查网络连接");
+    }
+
+    // 测试定位功能
+    async function testLocationServices() {
+        console.log("=== 开始定位服务测试 ===");
+        console.log("平台信息:", currentPlatform);
+        console.log("网络状态:", navigator.onLine);
+        console.log("用户代理:", navigator.userAgent);
+
+        try {
+            // 测试浏览器定位
+            console.log("测试浏览器定位...");
+            try {
+                const browserLocation = await getBrowserLocation();
+                console.log("✅ 浏览器定位成功:", browserLocation);
+            } catch (error) {
+                console.log("❌ 浏览器定位失败:", error.message);
+            }
+
+            // 测试IP定位
+            console.log("测试IP定位...");
+            try {
+                const ipLocation = await getIPLocation();
+                console.log("✅ IP定位成功:", ipLocation);
+            } catch (error) {
+                console.log("❌ IP定位失败:", error.message);
+            }
+
+            // 测试Tauri定位（仅移动设备且在Tauri环境中）
+            if (
+                (currentPlatform === "ios" || currentPlatform === "android") &&
+                window.__TAURI__
+            ) {
+                console.log("测试Tauri定位...");
+                try {
+                    const geolocationModule = await import(
+                        "@tauri-apps/plugin-geolocation"
+                    );
+                    const position =
+                        await geolocationModule.getCurrentPosition();
+                    const location = {
+                        longitude: position.coords.longitude,
+                        latitude: position.coords.latitude,
+                        accuracy: position.coords.accuracy,
+                        source: "tauri-geolocation",
+                    };
+                    console.log("✅ Tauri定位成功:", location);
+                } catch (error) {
+                    console.log("❌ Tauri定位失败:", error.message);
+                }
+            } else if (
+                currentPlatform === "ios" ||
+                currentPlatform === "android"
+            ) {
+                console.log("跳过Tauri定位测试：非Tauri环境");
+            }
+
+            console.log("=== 定位服务测试完成 ===");
+        } catch (error) {
+            console.error("定位测试过程中出错:", error);
+        }
+    }
+
+    async function navigateToDevice() {
         if (
             selectedDevice &&
             selectedDevice.longitude &&
             selectedDevice.latitude &&
             mapComponent
         ) {
-            mapComponent.navigateToDevice(selectedDevice);
+            isNavigating = true;
 
-            // 2秒后关闭对话框
-            setTimeout(() => {
-                handleCloseDialog();
-            }, 2000);
+            try {
+                // 首先检测平台
+                await detectPlatform();
+
+                // 获取当前位置
+                const location = await getCurrentLocation();
+
+                if (location) {
+                    console.log(
+                        `使用${location.source}定位，平台: ${currentPlatform}`,
+                    );
+
+                    // 更新地图组件的当前位置
+                    if (mapComponent.currentLocation) {
+                        mapComponent.currentLocation = location;
+                    }
+
+                    // 开始导航
+                    mapComponent.navigateToDevice(selectedDevice);
+
+                    // 导航开始后立即关闭对话框，让用户看到地图上的导航过程
+                    handleCloseDialog();
+                } else {
+                    showAlert("无法获取当前位置，导航失败", "error");
+                }
+            } catch (error) {
+                console.error("导航准备失败:", error);
+                showNavigationError(selectedDevice.name, error.message);
+            } finally {
+                isNavigating = false;
+            }
         }
     }
 
@@ -172,6 +541,10 @@
             // 不自动清除，让用户继续看到轨迹
         }
     }
+    // 组件挂载时检测平台
+    $: {
+        detectPlatform();
+    }
 </script>
 
 <div class="monitor-page">
@@ -190,8 +563,10 @@
             }}
             onNavigationError={(errorMessage) => {
                 isNavigating = false;
-                showNavigationError(selectedDevice?.name || "设备");
-                console.error("导航错误:", errorMessage);
+                showNavigationError(
+                    selectedDevice?.name || "设备",
+                    errorMessage,
+                );
             }}
             height="100%"
         />
@@ -263,6 +638,28 @@
                                 </div>
                             {/if}
 
+                            {#if currentLocation}
+                                <div class="info-section">
+                                    <span class="info-label">当前位置来源</span>
+                                    <p>
+                                        {currentLocation.source === "browser"
+                                            ? "浏览器定位"
+                                            : currentLocation.source === "ip"
+                                              ? "IP定位"
+                                              : currentLocation.source ===
+                                                  "tauri-geolocation"
+                                                ? "设备GPS定位"
+                                                : currentLocation.source}
+                                        {currentLocation.city
+                                            ? ` (${currentLocation.city})`
+                                            : ""}
+                                        {currentLocation.service
+                                            ? ` - ${new URL(currentLocation.service).hostname}`
+                                            : ""}
+                                    </p>
+                                </div>
+                            {/if}
+
                             <div class="actions">
                                 <div class="button-group">
                                     <button
@@ -301,17 +698,6 @@
     <!-- Alert Snackbar -->
     {#if alertOpen}
         <div class="alert-snackbar {alertType}">
-            <div class="alert-icon">
-                {#if alertType === "success"}
-                    ✓
-                {:else if alertType === "warning"}
-                    ⚠
-                {:else if alertType === "error"}
-                    ✕
-                {:else}
-                    ℹ
-                {/if}
-            </div>
             <span>{alertMessage}</span>
             <button on:click={handleCloseAlert} aria-label="关闭警报">×</button>
         </div>
