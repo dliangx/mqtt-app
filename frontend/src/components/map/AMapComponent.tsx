@@ -1,4 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import './AMapComponent.css';
+
 import type { Device } from 'src/types';
 import type { Geofence, GeofenceViolation } from 'src/utils/geofence';
 
@@ -1111,67 +1113,23 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     // 获取状态颜色
 
     return (
-      <div
-        style={{
-          position: 'relative',
-          height,
-          contain: 'layout style paint',
-        }}
-        ref={elementRef}
-      >
+      <div className="amap-component-container" style={{ height }} ref={elementRef}>
         {/* Mapbox 容器 */}
         <div
           id="mapbox-container"
-          style={{
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden',
-            display: currentMapSource === 'mapbox' ? 'block' : 'none',
-            position: 'absolute',
-          }}
+          className={`mapbox-container ${currentMapSource === 'mapbox' ? '' : 'hidden'}`}
         />
 
         {/* 高德地图容器 */}
         <div
           ref={mapRef}
-          style={{
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden',
-            display: currentMapSource === 'amap' ? 'block' : 'none',
-            position: 'absolute',
-          }}
+          className={`amap-container ${currentMapSource === 'amap' ? '' : 'hidden'}`}
         />
 
         {/* 全屏按钮 */}
         <button
           onClick={toggleFullscreen}
-          style={{
-            position: 'absolute',
-            top: 56,
-            left: 10,
-            zIndex: 1000,
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: 'gray',
-            cursor: 'pointer',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          }}
+          className="fullscreen-button"
           title={fullscreen ? '退出全屏' : '进入全屏'}
         >
           ⛶
@@ -1208,25 +1166,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               }, 100);
             }
           }}
-          style={{
-            position: 'absolute',
-
-            top: 100,
-            left: 10,
-            zIndex: 1000,
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#2c3e50',
-            cursor: 'pointer',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          }}
+          className="map-source-button"
           title={`切换到${currentMapSource === 'amap' ? 'Mapbox' : '高德地图'}`}
         >
           {currentMapSource === 'amap' ? '🌍' : '🇨🇳'}
@@ -1244,157 +1184,45 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           onDrawingToggle={handleDrawingToggle}
         />
 
-        {!mapLoaded && !mapError && (
-          <div
-            style={{
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f5f5f5',
-              borderRadius: '8px',
-              color: '#666',
-              fontSize: '14px',
-            }}
-          >
-            地图加载中...
-          </div>
-        )}
+        {!mapLoaded && !mapError && <div className="map-loading-indicator">地图加载中...</div>}
 
         {mapError && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#ffebee',
-              borderRadius: '8px',
-              color: '#d32f2f',
-              fontSize: '14px',
-              padding: '20px',
-              textAlign: 'center',
-            }}
-          >
+          <div className="map-error-display">
             {mapError}
             <br />
-            <small style={{ fontSize: '12px', marginTop: '8px' }}>
-              请检查API密钥配置和网络连接
-            </small>
+            <small>请检查API密钥配置和网络连接</small>
           </div>
         )}
 
         {/* 位置获取状态提示 */}
-        {locationError && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              background: '#ffebee',
-              color: '#c62828',
-              padding: '8px 12px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              zIndex: 1000,
-              maxWidth: '300px',
-            }}
-          >
-            ⚠️ {locationError}
-          </div>
-        )}
+        {locationError && <div className="location-error-display">⚠️ {locationError}</div>}
 
         {/* 设备信息对话框 */}
         {deviceDialogOpen && selectedDevice && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              zIndex: 1000,
-              minWidth: '400px',
-              maxWidth: '500px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-            }}
-          >
-            <div
-              style={{
-                padding: '20px',
-                borderBottom: '1px solid #e0e0e0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>
-                设备信息 - {selectedDevice.name}
-              </h3>
+          <div className="device-dialog">
+            <div className="device-dialog-header">
+              <h3>设备信息 - {selectedDevice.name}</h3>
               <button
                 onClick={() => setDeviceDialogOpen(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  color: '#666',
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="device-dialog-close-button"
               >
                 ×
               </button>
             </div>
 
-            <div style={{ padding: '20px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '16px',
-                }}
-              >
-                <h4 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
-                  {selectedDevice.name}
-                </h4>
+            <div className="device-dialog-content">
+              <div className="device-dialog-content-header">
+                <h4>{selectedDevice.name}</h4>
                 <span
-                  style={{
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    backgroundColor:
-                      selectedDevice.status === 'online'
-                        ? '#4caf50'
-                        : selectedDevice.status === 'offline'
-                          ? '#f44336'
-                          : selectedDevice.status === 'warning'
-                            ? '#ff9800'
-                            : '#9e9e9e',
-                    color: 'white',
-                  }}
+                  className={`device-status-badge ${
+                    selectedDevice.status === 'online'
+                      ? 'online'
+                      : selectedDevice.status === 'offline'
+                        ? 'offline'
+                        : selectedDevice.status === 'warning'
+                          ? 'warning'
+                          : 'default'
+                  }`}
                 >
                   {selectedDevice.status === 'online'
                     ? '在线'
@@ -1406,19 +1234,15 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
                 </span>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Topic</div>
-                <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
-                  {selectedDevice.topic || '未设置'}
-                </div>
+              <div className="device-info-item">
+                <div className="device-info-item-label">Topic</div>
+                <div className="device-info-item-value">{selectedDevice.topic || '未设置'}</div>
               </div>
 
               {selectedDevice.longitude && selectedDevice.latitude && (
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    位置坐标
-                  </div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                <div className="device-info-item">
+                  <div className="device-info-item-label">位置坐标</div>
+                  <div className="device-info-item-value">
                     {Number(selectedDevice.longitude).toFixed(6)},{' '}
                     {Number(selectedDevice.latitude).toFixed(6)}
                   </div>
@@ -1426,15 +1250,13 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               )}
 
               {selectedDevice.address && (
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>地址</div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
-                    {selectedDevice.address}
-                  </div>
+                <div className="device-info-item">
+                  <div className="device-info-item-label">地址</div>
+                  <div className="device-info-item-value">{selectedDevice.address}</div>
                 </div>
               )}
 
-              <div style={{ marginTop: '20px' }}>
+              <div className="device-info-actions">
                 <button
                   onClick={() => {
                     if (selectedDevice.longitude && selectedDevice.latitude) {
@@ -1447,19 +1269,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
                     }
                   }}
                   disabled={!selectedDevice.longitude || !selectedDevice.latitude}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #1976d2',
-                    borderRadius: '4px',
-                    backgroundColor:
-                      !selectedDevice.longitude || !selectedDevice.latitude ? '#f5f5f5' : '#1976d2',
-                    color: !selectedDevice.longitude || !selectedDevice.latitude ? '#999' : 'white',
-                    cursor:
-                      !selectedDevice.longitude || !selectedDevice.latitude
-                        ? 'not-allowed'
-                        : 'pointer',
-                    fontSize: '14px',
-                  }}
+                  className="navigate-button"
                 >
                   导航到此位置
                 </button>
