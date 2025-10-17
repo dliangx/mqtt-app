@@ -39,8 +39,12 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
   return (
     <Box
       sx={{
-        height: 'calc(100vh - 72px)',
-        width: 'calc(100vw - 240px)',
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        height: '100vh',
+        width: '100wh',
       }}
     >
       {/* Map component with geofence and navigation features */}
