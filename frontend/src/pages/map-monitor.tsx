@@ -1,4 +1,4 @@
-import type { Device } from 'src/types';
+import type { Alert, Device } from 'src/types';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -13,6 +13,7 @@ import MonitorPage from './MonitorPage';
 export default function MapMonitorPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [devices, setDevices] = useState<Device[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDevices = useCallback(async () => {
@@ -44,9 +45,21 @@ export default function MapMonitorPage() {
     }
   }, [enqueueSnackbar]);
 
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const response = await apiService.getAlerts();
+      const alertsData = Array.isArray(response) ? [...response] : [];
+      setAlerts(alertsData);
+    } catch (err) {
+      console.error('Failed to fetch alerts:', err);
+      enqueueSnackbar('获取警报数据失败', { variant: 'error' });
+    }
+  }, [enqueueSnackbar]);
+
   useEffect(() => {
     fetchDevices();
-  }, [fetchDevices]);
+    fetchAlerts();
+  }, [fetchDevices, fetchAlerts]);
 
   if (loading) {
     return (
@@ -64,5 +77,5 @@ export default function MapMonitorPage() {
     );
   }
 
-  return <MonitorPage devices={devices} />;
+  return <MonitorPage devices={devices} alerts={alerts} />;
 }

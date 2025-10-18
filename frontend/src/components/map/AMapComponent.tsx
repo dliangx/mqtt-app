@@ -1,7 +1,40 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+/**
+ * AMapComponent - 高德地图和Mapbox双地图源组件
+ *
+ * 功能特性：
+ * 1. 双地图源支持：高德地图（中国）和 Mapbox（国际）
+ * 2. 设备标记：在地图上显示设备位置并支持点击交互
+ * 3. 导航功能：规划从当前位置到设备的路线
+ * 4. 地理围栏：创建、编辑和监控地理围栏，检测设备违规
+ * 5. 历史轨迹：查看设备的历史移动轨迹（基于 alerts 数据）
+ * 6. 全屏模式：支持地图全屏显示
+ *
+ * Props:
+ * @param devices - 设备列表，用于在地图上显示标记
+ * @param alerts - 警报列表，用于提取历史轨迹数据（type='1' 表示位置数据）
+ * @param onMarkerClick - 设备标记点击回调
+ * @param onGeofenceViolation - 地理围栏违规回调
+ * @param onHistoryTrailStatusChange - 历史轨迹显示状态变化回调
+ * @param height - 地图容器高度
+ *
+ * 通过 ref 暴露的方法:
+ * - navigateToDevice(device): 导航到指定设备
+ * - clearNavigation(): 清除导航路线
+ * - showHistoryTrack(coordinates): 显示历史轨迹
+ * - clearHistoryTrack(): 清除历史轨迹
+ * - getUserLocation(): 获取用户当前位置
+ *
+ * 历史轨迹功能说明：
+ * - 从 alerts 数组中筛选 type='1' 且包含 parsed_data 的记录
+ * - parsed_data 应为 JSON 格式，包含 longitude 和 latitude 字段
+ * - 至少需要 2 个有效坐标点才能绘制轨迹
+ * - 轨迹线颜色为橙色 (#ff6b35)，宽度 6px
+ * - 自动调整地图视角以显示完整轨迹
+ */
 import './AMapComponent.css';
 
-import type { Device } from 'src/types';
+import type { Alert, Device } from 'src/types';
 import type { Geofence, GeofenceViolation } from 'src/utils/geofence';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
@@ -24,8 +57,10 @@ import GeofenceToolbar from './GeofenceToolbar';
 
 interface AMapComponentProps {
   devices: Device[];
+  alerts?: Alert[];
   onMarkerClick?: (device: Device) => void;
   onGeofenceViolation?: (violation: GeofenceViolation) => void;
+  onHistoryTrailStatusChange?: (isShowing: boolean) => void;
   height?: string;
 }
 
@@ -57,7 +92,17 @@ declare global {
 }
 
 const AMapComponent = React.forwardRef<any, AMapComponentProps>(
-  ({ devices, onMarkerClick, onGeofenceViolation, height = '400px' }, ref) => {
+  (
+    {
+      devices,
+      alerts = [],
+      onMarkerClick,
+      onGeofenceViolation,
+      onHistoryTrailStatusChange,
+      height = '400px',
+    },
+    ref
+  ) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const mapboxInstanceRef = useRef<any>(null);
@@ -67,6 +112,9 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const mouseToolRef = useRef<any>(null);
     const prevDevicesJsonRef = useRef<string>('');
     const routePolylineRef = useRef<any>(null);
+    const historyTrackPolylineRef = useRef<any>(null);
+    const historyTrackLayerId = 'history-track-layer';
+    const historyTrackSourceId = 'history-track-source';
     const [, setNavigationInfo] = useState<{
       visible: boolean;
       device: Device | null;
@@ -107,6 +155,20 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       },
       clearNavigation: () => {
         clearRoute();
+      },
+      showHistoryTrack: (coordinates: [number, number][]) => {
+        if (currentMapSource === 'amap') {
+          showAmapHistoryTrack(coordinates);
+        } else {
+          showMapboxHistoryTrack(coordinates);
+        }
+      },
+      clearHistoryTrack: () => {
+        if (currentMapSource === 'amap') {
+          clearAmapHistoryTrack();
+        } else {
+          clearMapboxHistoryTrack();
+        }
       },
       getUserLocation: () => getUserCurrentLocation(),
     }));
@@ -1110,6 +1172,208 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       }
     };
 
+    // 显示高德地图历史轨迹
+    const showAmapHistoryTrack = useCallback(
+      (coordinates: [number, number][]) => {
+        if (!mapInstanceRef.current || !window.AMap || coordinates.length < 2) return;
+
+        // 清除现有历史轨迹
+        clearAmapHistoryTrack();
+
+        // 验证坐标格式
+        const validCoordinates = coordinates.filter(
+          (coord) =>
+            Array.isArray(coord) &&
+            coord.length === 2 &&
+            typeof coord[0] === 'number' &&
+            typeof coord[1] === 'number' &&
+            !isNaN(coord[0]) &&
+            !isNaN(coord[1])
+        );
+
+        if (validCoordinates.length < 2) return;
+
+        try {
+          // 将坐标转换为高德地图格式 [lng, lat]
+          const amapPath = validCoordinates.map(
+            (coord) => new window.AMap.LngLat(coord[0], coord[1])
+          );
+
+          // 创建轨迹线
+          const polyline = new window.AMap.Polyline({
+            path: amapPath,
+            strokeColor: '#ff6b35',
+            strokeWeight: 6,
+            strokeOpacity: 0.9,
+            lineJoin: 'round',
+            lineCap: 'round',
+            zIndex: 50,
+          });
+
+          historyTrackPolylineRef.current = polyline;
+          mapInstanceRef.current.add(polyline);
+
+          // 调整视角显示整个轨迹
+          mapInstanceRef.current.setFitView([polyline], false, [50, 50, 50, 50]);
+
+          onHistoryTrailStatusChange?.(true);
+        } catch (error) {
+          console.error('显示高德地图历史轨迹失败:', error);
+        }
+      },
+      [onHistoryTrailStatusChange]
+    );
+
+    // 清除高德地图历史轨迹
+    const clearAmapHistoryTrack = useCallback(() => {
+      if (historyTrackPolylineRef.current && mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove(historyTrackPolylineRef.current);
+          historyTrackPolylineRef.current = null;
+          onHistoryTrailStatusChange?.(false);
+        } catch (error) {
+          console.error('清除高德地图历史轨迹失败:', error);
+        }
+      }
+    }, [onHistoryTrailStatusChange]);
+
+    // 显示Mapbox历史轨迹
+    const showMapboxHistoryTrack = useCallback(
+      (coordinates: [number, number][]) => {
+        if (!mapboxInstanceRef.current || !window.mapboxgl || coordinates.length < 2) return;
+
+        // 清除现有历史轨迹
+        clearMapboxHistoryTrack();
+
+        // 验证坐标格式
+        const validCoordinates = coordinates.filter(
+          (coord) =>
+            Array.isArray(coord) &&
+            coord.length === 2 &&
+            typeof coord[0] === 'number' &&
+            typeof coord[1] === 'number' &&
+            !isNaN(coord[0]) &&
+            !isNaN(coord[1])
+        );
+
+        if (validCoordinates.length < 2) return;
+
+        try {
+          const lineString = {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: validCoordinates,
+            },
+          };
+
+          // 添加轨迹源
+          mapboxInstanceRef.current.addSource(historyTrackSourceId, {
+            type: 'geojson',
+            data: lineString,
+          });
+
+          // 添加轨迹图层
+          mapboxInstanceRef.current.addLayer({
+            id: historyTrackLayerId,
+            type: 'line',
+            source: historyTrackSourceId,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#ff6b35',
+              'line-width': 6,
+              'line-opacity': 0.9,
+            },
+          });
+
+          // 调整视角显示整个轨迹
+          const bounds = new window.mapboxgl.LngLatBounds();
+          validCoordinates.forEach((coord) => bounds.extend(coord));
+
+          if (!bounds.isEmpty()) {
+            mapboxInstanceRef.current.fitBounds(bounds, {
+              padding: 50,
+              duration: 1500,
+              maxZoom: 16,
+            });
+          }
+
+          onHistoryTrailStatusChange?.(true);
+        } catch (error) {
+          console.error('显示Mapbox历史轨迹失败:', error);
+        }
+      },
+      [onHistoryTrailStatusChange]
+    );
+
+    // 清除Mapbox历史轨迹
+    const clearMapboxHistoryTrack = useCallback(() => {
+      if (!mapboxInstanceRef.current) return;
+
+      try {
+        if (mapboxInstanceRef.current.getLayer(historyTrackLayerId)) {
+          mapboxInstanceRef.current.removeLayer(historyTrackLayerId);
+        }
+
+        if (mapboxInstanceRef.current.getSource(historyTrackSourceId)) {
+          mapboxInstanceRef.current.removeSource(historyTrackSourceId);
+        }
+
+        onHistoryTrailStatusChange?.(false);
+      } catch (error) {
+        console.error('清除Mapbox历史轨迹失败:', error);
+      }
+    }, [onHistoryTrailStatusChange]);
+
+    // 显示历史轨迹的辅助函数
+    const showHistoryTrail = useCallback(() => {
+      if (!selectedDevice) return;
+
+      // 查找该设备的历史轨迹数据
+      const deviceAlerts = alerts.filter(
+        (alert) => alert.device_id === selectedDevice.id && alert.type === '1' && alert.parsed_data
+      );
+
+      if (deviceAlerts.length === 0) {
+        alert('该设备暂无历史轨迹数据');
+        return;
+      }
+
+      // 提取经纬度坐标
+      const coordinates = deviceAlerts
+        .map((alertItem) => {
+          try {
+            const data = JSON.parse(alertItem.parsed_data || '{}');
+            return [data.longitude, data.latitude] as [number, number];
+          } catch {
+            return null;
+          }
+        })
+        .filter(
+          (coord): coord is [number, number] =>
+            coord !== null && coord[0] != null && coord[1] != null
+        );
+
+      if (coordinates.length < 2) {
+        alert('历史轨迹数据不足，无法显示轨迹');
+        return;
+      }
+
+      // 显示历史轨迹
+      if (currentMapSource === 'amap') {
+        showAmapHistoryTrack(coordinates);
+      } else {
+        showMapboxHistoryTrack(coordinates);
+      }
+
+      // 关闭对话框
+      setDeviceDialogOpen(false);
+    }, [selectedDevice, alerts, currentMapSource, showAmapHistoryTrack, showMapboxHistoryTrack]);
+
     // 获取状态颜色
 
     return (
@@ -1257,22 +1521,31 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               )}
 
               <div className="device-info-actions">
-                <button
-                  onClick={() => {
-                    if (selectedDevice.longitude && selectedDevice.latitude) {
-                      if (currentMapSource === 'amap') {
-                        showRouteToDevice(selectedDevice);
-                      } else {
-                        showMapboxRouteToDevice(selectedDevice);
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      if (selectedDevice.longitude && selectedDevice.latitude) {
+                        if (currentMapSource === 'amap') {
+                          showRouteToDevice(selectedDevice);
+                        } else {
+                          showMapboxRouteToDevice(selectedDevice);
+                        }
+                        setDeviceDialogOpen(false);
                       }
-                      setDeviceDialogOpen(false);
-                    }
-                  }}
-                  disabled={!selectedDevice.longitude || !selectedDevice.latitude}
-                  className="navigate-button"
-                >
-                  导航到此位置
-                </button>
+                    }}
+                    disabled={!selectedDevice.longitude || !selectedDevice.latitude}
+                    className="navigate-button"
+                  >
+                    导航到此位置
+                  </button>
+                  <button
+                    onClick={showHistoryTrail}
+                    className="history-button"
+                    title="查看历史轨迹"
+                  >
+                    📍 历史轨迹
+                  </button>
+                </div>
               </div>
             </div>
           </div>

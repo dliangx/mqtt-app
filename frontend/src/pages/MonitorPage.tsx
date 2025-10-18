@@ -1,4 +1,4 @@
-import type { Device } from 'src/types';
+import type { Alert, Device } from 'src/types';
 import type { GeofenceViolation } from 'src/utils/geofence';
 
 import React, { useRef, useMemo, useState, useCallback } from 'react';
@@ -9,9 +9,10 @@ import AMapComponent from 'src/components/map/AMapComponent';
 
 interface MonitorPageProps {
   devices: Device[];
+  alerts?: Alert[];
 }
 
-const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
+const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices, alerts = [] }) => {
   // 使用 useMemo 来优化 devices 数组，避免不必要的重新渲染
   const devices = useMemo(() => rawDevices, [rawDevices]);
   const [, setAlertOpen] = useState(false);
@@ -47,10 +48,11 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices }) => {
         width: '100wh',
       }}
     >
-      {/* Map component with geofence and navigation features */}
+      {/* Map component with geofence, navigation and history trail features */}
       <AMapComponent
         ref={mapRef}
         devices={devices}
+        alerts={alerts}
         onMarkerClick={handleMarkerClick}
         onGeofenceViolation={handleGeofenceViolation}
         height="100%"
