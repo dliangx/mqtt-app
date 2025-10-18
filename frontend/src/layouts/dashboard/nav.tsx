@@ -15,8 +15,6 @@ import { RouterLink } from 'src/routes/components';
 import { Logo } from 'src/components/logo';
 import { Scrollbar } from 'src/components/scrollbar';
 
-import { NavUpgrade } from '../components/nav-upgrade';
-
 import type { NavItem } from '../nav-config-dashboard';
 
 // ----------------------------------------------------------------------

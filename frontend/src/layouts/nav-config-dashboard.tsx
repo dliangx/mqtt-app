@@ -4,11 +4,10 @@ import {
   People as PeopleIcon,
   Devices as DevicesIcon,
   Warning as WarningIcon,
-  DataUsage as DataUsageIcon,
   Settings as SettingsIcon,
+  DataUsage as DataUsageIcon,
 } from '@mui/icons-material';
 
-import { Label } from 'src/components/label';
 import { SvgColor } from 'src/components/svg-color';
 
 // ----------------------------------------------------------------------
