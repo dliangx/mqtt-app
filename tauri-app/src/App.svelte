@@ -87,6 +87,10 @@
             }
         } catch (err) {
             console.error("Failed to fetch devices:", err);
+            if (err.response?.status === 400) {
+                console.log("Received 400 error, logging out...");
+                handleLogout();
+            }
         }
     }
 
@@ -96,6 +100,10 @@
             alerts = Array.isArray(response) ? [...response] : [];
         } catch (err) {
             console.error("Failed to fetch alerts:", err);
+            if (err.response?.status === 400) {
+                console.log("Received 400 error, logging out...");
+                handleLogout();
+            }
         }
     }
 
