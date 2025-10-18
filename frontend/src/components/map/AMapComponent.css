@@ -241,16 +241,16 @@
 .navigate-button {
   padding: 8px 16px;
   border: 1px solid #1976d2;
+  background-color: white;
   border-radius: 4px;
-  background-color: #1976d2;
-  color: white;
+  color: #1565c0;
   cursor: pointer;
   font-size: 14px;
 }
 
 .navigate-button:hover {
   background-color: #1565c0;
-  border-color: #1565c0;
+  color: white;
 }
 
 .navigate-button:disabled {
@@ -262,17 +262,17 @@
 
 .history-button {
   padding: 8px 16px;
-  border: 1px solid #ff6b35;
+  border: 1px solid #1565c0;
   border-radius: 4px;
   background-color: white;
-  color: #ff6b35;
   cursor: pointer;
+  color: #1565c0;
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .history-button:hover {
-  background-color: #ff6b35;
+  background-color: #1565c0;
   color: white;
 }
 

@@ -53,6 +53,7 @@ declare global {
 // 地图源类型定义
 type MapSource = 'amap' | 'mapbox';
 
+import { useSnackbar } from '../snackbar';
 import GeofenceToolbar from './GeofenceToolbar';
 
 interface AMapComponentProps {
@@ -103,6 +104,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     },
     ref
   ) => {
+    const { enqueueSnackbar } = useSnackbar();
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const mapboxInstanceRef = useRef<any>(null);
@@ -650,11 +652,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           mapInstanceRef.current.setFitView([routePolylineRef.current]);
         } else {
           console.error('路线规划失败:', result.info, result);
-          alert(`路线规划失败: ${result.info || '未知错误'}`);
+          enqueueSnackbar(`路线规划失败: ${result.info || '未知错误'}`, { variant: 'warning' });
         }
       } catch (error) {
         console.error('路线规划请求失败:', error);
-        alert('路线规划请求失败，请检查网络连接');
+        enqueueSnackbar('路线规划请求失败，请检查网络连接', { variant: 'warning' });
       }
     };
 
@@ -760,11 +762,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           map.fitBounds(bounds, { padding: 50 });
         } else {
           console.error('Mapbox 路线规划失败:', result);
-          alert(`路线规划失败: ${result.message || '未知错误'}`);
+          enqueueSnackbar(`路线规划失败: ${result.message || '未知错误'}`, { variant: 'error' });
         }
       } catch (error) {
         console.error('Mapbox 路线规划请求失败:', error);
-        alert('路线规划请求失败，请检查网络连接');
+        enqueueSnackbar('路线规划请求失败，请检查网络连接', { variant: 'error' });
       }
     };
 
@@ -1339,7 +1341,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
       );
 
       if (deviceAlerts.length === 0) {
-        alert('该设备暂无历史轨迹数据');
+        enqueueSnackbar('该设备暂无历史轨迹数据', { variant: 'warning' });
         return;
       }
 
@@ -1359,7 +1361,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         );
 
       if (coordinates.length < 2) {
-        alert('历史轨迹数据不足，无法显示轨迹');
+        enqueueSnackbar('历史轨迹数据不足，无法显示轨迹', { variant: 'warning' });
         return;
       }
 

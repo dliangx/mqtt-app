@@ -10,12 +10,12 @@ import {
 import {
   Box,
   Paper,
-  Typography,
   Button,
   Dialog,
+  Typography,
+  IconButton,
   DialogTitle,
   DialogContent,
-  IconButton,
   LinearProgress,
 } from '@mui/material';
 
@@ -58,6 +58,7 @@ export default function MessageTypesPage() {
       await fetchConfigs();
     } catch (err) {
       // Error already handled in fetchConfigs
+      console.log('Failed to fetch message type configs:', err);
     } finally {
       setLoading(false);
     }

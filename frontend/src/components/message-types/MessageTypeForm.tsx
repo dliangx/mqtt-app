@@ -1,28 +1,28 @@
-import type { MessageTypeConfig, MessageFormat, FieldDefinition } from 'src/types';
+import type { MessageFormat, FieldDefinition, MessageTypeConfig } from 'src/types';
 
 import React, { useState, useEffect } from 'react';
 
 import {
+  Add as AddIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
-  Add as AddIcon,
   Delete as DeleteIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import {
   Box,
   Card,
-  TextField,
+  // Chip,
+  Paper,
   Button,
-  MenuItem,
-  Typography,
-  IconButton,
-  FormControl,
-  InputLabel,
   Select,
   Divider,
-  Chip,
-  Paper,
+  MenuItem,
+  TextField,
+  Typography,
+  IconButton,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 
 import { apiService } from 'src/services/api';
