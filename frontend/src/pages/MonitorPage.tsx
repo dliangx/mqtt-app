@@ -19,10 +19,6 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices, alerts =
   const [, setAlertMessage] = useState('');
   const mapRef = useRef<any>(null);
 
-  const handleMarkerClick = (device: Device) => {
-    // 设备信息对话框现在在地图组件内部处理
-  };
-
   const handleGeofenceViolation = useCallback((violation: GeofenceViolation) => {
     setAlertMessage(violation.message);
     setAlertOpen(true);
@@ -53,7 +49,6 @@ const MonitorPage: React.FC<MonitorPageProps> = ({ devices: rawDevices, alerts =
         ref={mapRef}
         devices={devices}
         alerts={alerts}
-        onMarkerClick={handleMarkerClick}
         onGeofenceViolation={handleGeofenceViolation}
         height="100%"
       />

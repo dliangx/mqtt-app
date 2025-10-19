@@ -59,7 +59,6 @@ import GeofenceToolbar from './GeofenceToolbar';
 interface AMapComponentProps {
   devices: Device[];
   alerts?: Alert[];
-  onMarkerClick?: (device: Device) => void;
   onGeofenceViolation?: (violation: GeofenceViolation) => void;
   onHistoryTrailStatusChange?: (isShowing: boolean) => void;
   height?: string;
@@ -94,14 +93,7 @@ declare global {
 
 const AMapComponent = React.forwardRef<any, AMapComponentProps>(
   (
-    {
-      devices,
-      alerts = [],
-      onMarkerClick,
-      onGeofenceViolation,
-      onHistoryTrailStatusChange,
-      height = '400px',
-    },
+    { devices, alerts = [], onGeofenceViolation, onHistoryTrailStatusChange, height = '400px' },
     ref
   ) => {
     const { enqueueSnackbar } = useSnackbar();
@@ -549,9 +541,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             console.log('设备标记点击事件触发');
             setSelectedDevice(device);
             setDeviceDialogOpen(true);
-            if (onMarkerClick) {
-              onMarkerClick(device);
-            }
+
             return false;
           });
 
@@ -1143,9 +1133,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               e.preventDefault();
               setSelectedDevice(device);
               setDeviceDialogOpen(true);
-              if (onMarkerClick) {
-                onMarkerClick(device);
-              }
             });
 
             // 创建标记
