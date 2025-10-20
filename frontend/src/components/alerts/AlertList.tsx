@@ -70,7 +70,7 @@ const formatTimestamp = (timestamp: number) =>
 
 // ----------------------------------------------------------------------
 
-export default function AlertList({ alerts, onRefresh }: AlertListProps) {
+export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertListProps) {
   const { enqueueSnackbar } = useSnackbar();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -222,7 +222,13 @@ export default function AlertList({ alerts, onRefresh }: AlertListProps) {
             {paginatedAlerts.map((alert) => {
               const isItemSelected = isSelected(alert.ID);
               return (
-                <TableRow key={alert.ID} hover selected={isItemSelected}>
+                <TableRow
+                  key={alert.ID}
+                  hover
+                  selected={isItemSelected}
+                  onClick={() => onAlertClick?.(alert)}
+                  sx={{ cursor: onAlertClick ? 'pointer' : 'default' }}
+                >
                   <TableCell padding="checkbox">
                     <Checkbox
                       checked={isItemSelected}

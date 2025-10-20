@@ -2,8 +2,24 @@ import type { Alert as AlertType } from 'src/types';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
-import { Refresh as RefreshIcon, Settings as SettingsIcon } from '@mui/icons-material';
-import { Box, Chip, Paper, Button, Typography, IconButton, LinearProgress } from '@mui/material';
+import {
+  Close as CloseIcon,
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon,
+} from '@mui/icons-material';
+import {
+  Box,
+  Chip,
+  Paper,
+  Button,
+  Typography,
+  IconButton,
+  LinearProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from '@mui/material';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -22,6 +38,8 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedAlert, setSelectedAlert] = useState<AlertType | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -60,7 +78,33 @@ export default function AlertsPage() {
   }, [fetchData]);
 
   const handleAlertClick = (alert: AlertType) => {
-    // 可以在这里实现消息详情弹窗或标记为已读
+    setSelectedAlert(alert);
+    setShowDetailModal(true);
+
+    // 如果消息未读，自动标记为已读
+    if (!alert.read) {
+      handleMarkAsRead(alert.ID);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedAlert(null);
+  };
+
+  const handleMarkAsRead = async (alertId: number) => {
+    try {
+      await apiService.markAlertAsRead(alertId);
+      // 更新本地状态
+      setAlerts((prevAlerts) =>
+        prevAlerts.map((alert) => (alert.ID === alertId ? { ...alert, read: true } : alert))
+      );
+      fetchUnreadAlerts();
+      enqueueSnackbar('消息已标记为已读', { variant: 'success' });
+    } catch (err) {
+      console.error('Failed to mark alert as read:', err);
+      enqueueSnackbar('标记消息为已读失败', { variant: 'error' });
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -124,6 +168,138 @@ export default function AlertsPage() {
           <AlertList alerts={alerts} onRefresh={fetchData} onAlertClick={handleAlertClick} />
         </Paper>
       </Box>
+
+      {/* Alert详情模态框 */}
+      <Dialog open={showDetailModal} onClose={handleCloseDetailModal} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">消息详情</Typography>
+            <IconButton onClick={handleCloseDetailModal}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedAlert && (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Box sx={{ flex: '1 1 200px' }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      设备ID
+                    </Typography>
+                    <Typography variant="body1">{selectedAlert.device_id}</Typography>
+                  </Box>
+                  <Box sx={{ flex: '1 1 200px' }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      消息类型
+                    </Typography>
+                    <Typography variant="body1">{selectedAlert.type}</Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Box sx={{ flex: '1 1 200px' }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      优先级
+                    </Typography>
+                    <Chip
+                      label={selectedAlert.level}
+                      color={
+                        selectedAlert.level === 'critical'
+                          ? 'error'
+                          : selectedAlert.level === 'high'
+                            ? 'warning'
+                            : selectedAlert.level === 'medium'
+                              ? 'info'
+                              : 'default'
+                      }
+                      size="small"
+                    />
+                  </Box>
+                  <Box sx={{ flex: '1 1 200px' }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      状态
+                    </Typography>
+                    <Chip
+                      label={selectedAlert.read ? '已读' : '未读'}
+                      color={selectedAlert.read ? 'default' : 'primary'}
+                      variant={selectedAlert.read ? 'outlined' : 'filled'}
+                      size="small"
+                    />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    消息内容
+                  </Typography>
+                  <Typography variant="body1" sx={{ mt: 1 }}>
+                    {selectedAlert.message}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    时间戳
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(selectedAlert.timestamp * 1000).toLocaleString('zh-CN')}
+                  </Typography>
+                </Box>
+                {selectedAlert.raw_data && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      原始数据
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        mt: 1,
+                        backgroundColor: 'grey.50',
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {selectedAlert.raw_data}
+                    </Paper>
+                  </Box>
+                )}
+                {selectedAlert.parsed_data && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      解析数据
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        mt: 1,
+                        backgroundColor: 'grey.50',
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem',
+                        maxHeight: 200,
+                        overflow: 'auto',
+                      }}
+                    >
+                      {(() => {
+                        try {
+                          const parsed = JSON.parse(selectedAlert.parsed_data);
+                          return JSON.stringify(parsed, null, 2);
+                        } catch {
+                          return selectedAlert.parsed_data;
+                        }
+                      })()}
+                    </Paper>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDetailModal}>关闭</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
