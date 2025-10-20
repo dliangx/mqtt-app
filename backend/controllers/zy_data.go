@@ -219,7 +219,7 @@ func HandleZyTCPData(data []byte, conn net.Conn) {
 type ZyForwardData struct {
 	Supplier    string   `json:"supplier"`
 	TotalLen    *int     `json:"totalLen"`
-	CmdCode     *string  `json:"cmdCode"`
+	CmdCode     *int     `json:"cmdCode"`
 	Token       string   `json:"token"`
 	MsgIDLen    *int     `json:"msgIdLen"`
 	MsgID       string   `json:"msgId"`
@@ -230,9 +230,9 @@ type ZyForwardData struct {
 }
 
 type ZyForwardDataResponse struct {
-	TotalLen *int    `json:"totalLen"`
-	CmdCode  *string `json:"cmdCode"`
-	Result   string  `json:"result"`
+	TotalLen *int   `json:"totalLen"`
+	CmdCode  *int   `json:"cmdCode"`
+	Result   string `json:"result"`
 }
 
 // ContentData represents the parsed content structure
@@ -333,6 +333,7 @@ func HandleZyForwardData(c *gin.Context) {
 	} else if data.DataCount > 0 && data.DataCount <= 1 {
 		// Parse single content data
 		if data.Content != "" {
+
 			contentData, err := parseContentData(data.Content)
 			if err != nil {
 				response = ZyForwardDataResponse{
@@ -365,6 +366,7 @@ func HandleZyForwardData(c *gin.Context) {
 		successCount := 0
 		for i, content := range data.ContentList {
 			if content != "" {
+
 				contentData, err := parseContentData(content)
 				if err != nil {
 					fmt.Printf("Error parsing content %d: %v\n", i, err)
@@ -388,8 +390,11 @@ func HandleZyForwardData(c *gin.Context) {
 
 // createZyDataAlert creates an alert record for ZY data
 func createZyDataAlert(contentData *ContentData, rawContent string) {
+	// 使用默认设备ID 1，因为DeviceType可能不是有效的设备ID
+	deviceID := uint(1)
+
 	alert := models.Alert{
-		DeviceID:  uint(contentData.DeviceType),
+		DeviceID:  deviceID,
 		Type:      "99",
 		Message:   "中移数据",
 		Level:     "warning",
@@ -400,6 +405,11 @@ func createZyDataAlert(contentData *ContentData, rawContent string) {
 			contentData.DeviceType, contentData.DateTime, contentData.Latitude, contentData.Longitude,
 			contentData.Altitude, contentData.SNR, contentData.Temperature, contentData.Voltage),
 	}
-	database.DB.Create(&alert)
-	fmt.Printf("Created ZY data alert for device type: %d\n", contentData.DeviceType)
+
+	result := database.DB.Create(&alert)
+	if result.Error != nil {
+		fmt.Printf("Failed to create alert: %v\n", result.Error)
+	} else {
+		fmt.Printf("Created ZY data alert for device type: %d, alert ID: %d\n", contentData.DeviceType, alert.ID)
+	}
 }
