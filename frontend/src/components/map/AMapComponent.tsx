@@ -107,6 +107,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     const prevDevicesJsonRef = useRef<string>('');
     const routePolylineRef = useRef<any>(null);
     const historyTrackPolylineRef = useRef<any>(null);
+    const historyTrackMarkersRef = useRef<any[]>([]);
     const historyTrackLayerId = 'history-track-layer';
     const historyTrackSourceId = 'history-track-source';
     const [, setNavigationInfo] = useState<{
@@ -1202,6 +1203,27 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           historyTrackPolylineRef.current = polyline;
           mapInstanceRef.current.add(polyline);
 
+          // 添加绿色小圆点标记
+          historyTrackMarkersRef.current = validCoordinates.map((coord, index) => {
+            const marker = new window.AMap.Marker({
+              position: new window.AMap.LngLat(coord[0], coord[1]),
+              content: `
+                <div style="
+                  width: 12px;
+                  height: 12px;
+                  background-color: #4CAF50;
+                  border-radius: 50%;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                "></div>
+              `,
+              offset: new window.AMap.Pixel(-6, -6),
+              zIndex: 60,
+            });
+            mapInstanceRef.current.add(marker);
+            return marker;
+          });
+
           // 调整视角显示整个轨迹
           mapInstanceRef.current.setFitView([polyline], false, [50, 50, 50, 50]);
 
@@ -1215,10 +1237,22 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
 
     // 清除高德地图历史轨迹
     const clearAmapHistoryTrack = useCallback(() => {
-      if (historyTrackPolylineRef.current && mapInstanceRef.current) {
+      if (mapInstanceRef.current) {
         try {
-          mapInstanceRef.current.remove(historyTrackPolylineRef.current);
-          historyTrackPolylineRef.current = null;
+          // 清除轨迹线
+          if (historyTrackPolylineRef.current) {
+            mapInstanceRef.current.remove(historyTrackPolylineRef.current);
+            historyTrackPolylineRef.current = null;
+          }
+
+          // 清除绿色小圆点标记
+          if (historyTrackMarkersRef.current.length > 0) {
+            historyTrackMarkersRef.current.forEach((marker) => {
+              mapInstanceRef.current.remove(marker);
+            });
+            historyTrackMarkersRef.current = [];
+          }
+
           onHistoryTrailStatusChange?.(false);
         } catch (error) {
           console.error('清除高德地图历史轨迹失败:', error);
@@ -1279,6 +1313,27 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
             },
           });
 
+          // 添加绿色小圆点标记
+          validCoordinates.forEach((coord, index) => {
+            const el = document.createElement('div');
+            el.className = 'history-track-point';
+            el.style.cssText = `
+              width: 12px;
+              height: 12px;
+              background-color: #4CAF50;
+              border-radius: 50%;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            `;
+
+            new window.mapboxgl.Marker({
+              element: el,
+              anchor: 'center',
+            })
+              .setLngLat(coord)
+              .addTo(mapboxInstanceRef.current);
+          });
+
           // 调整视角显示整个轨迹
           const bounds = new window.mapboxgl.LngLatBounds();
           validCoordinates.forEach((coord) => bounds.extend(coord));
@@ -1324,9 +1379,11 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
 
       // 查找该设备的历史轨迹数据
       const deviceAlerts = alerts.filter(
-        (alert) => alert.device_id === selectedDevice.id && alert.type === '1' && alert.parsed_data
+        (alert) =>
+          alert.device_id === selectedDevice.id &&
+          (alert.type === '99' || alert.type === '1') &&
+          alert.parsed_data
       );
-
       if (deviceAlerts.length === 0) {
         enqueueSnackbar('该设备暂无历史轨迹数据', { variant: 'warning' });
         return;
