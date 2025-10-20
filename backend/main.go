@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"io/fs"
+	"net"
 	"net/http"
 	"strings"
 
@@ -34,6 +35,9 @@ func main() {
 		// Auth routes
 		api.POST("/register", controllers.Register)
 		api.POST("/login", controllers.Login)
+
+		// 中移数据 data route
+		api.POST("/zy-forward-data", controllers.HandleZyForwardData)
 
 		// Authenticated routes
 		auth := api.Group("/")
@@ -110,7 +114,56 @@ func main() {
 		}
 	})
 
-	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+	// Start HTTP server in a goroutine
+	go func() {
+		r.Run(":8080") // listen and serve on 0.0.0.0:8080
+	}()
+
+	// Start TCP server for ZY data
+	go startZyTCPServer(":8081")
+
+	// Keep main goroutine running
+	select {}
+}
+
+// startZyTCPServer starts a TCP server to handle ZY data
+func startZyTCPServer(address string) {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		panic("Failed to start TCP server: " + err.Error())
+	}
+	defer listener.Close()
+
+	println("ZY TCP Server listening on " + address)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			println("Error accepting connection:", err.Error())
+			continue
+		}
+
+		go handleZyConnection(conn)
+	}
+}
+
+// handleZyConnection handles individual TCP connections for ZY data
+func handleZyConnection(conn net.Conn) {
+	defer conn.Close()
+
+	buffer := make([]byte, 1024)
+	for {
+		n, err := conn.Read(buffer)
+		if err != nil {
+			println("Error reading from connection:", err.Error())
+			return
+		}
+
+		if n > 0 {
+			// Process the TCP packet data using the controller
+			controllers.HandleZyTCPData(buffer[:n], conn)
+		}
+	}
 }
 
 // fileExists checks if a file exists in the embedded filesystem
