@@ -34,12 +34,12 @@ func ParseZYDataPacket(data []byte) (*ZYDataPacket, error) {
 	packet := &ZYDataPacket{
 		Total_len:  binary.BigEndian.Uint32(data[0:4]),
 		Cmd_code:   data[4],
-		Token:      data[5:24],
-		Msg_id_len: data[24],
+		Token:      data[5:25],
+		Msg_id_len: data[25],
 	}
 
 	// Calculate positions based on variable length msg_id
-	msgIdStart := 25
+	msgIdStart := 26
 	msgIdEnd := msgIdStart + int(packet.Msg_id_len)
 	if msgIdEnd > len(data) {
 		return nil, fmt.Errorf("invalid msg_id length")
@@ -48,7 +48,7 @@ func ParseZYDataPacket(data []byte) (*ZYDataPacket, error) {
 
 	// Parse content_len
 	contentLenStart := msgIdEnd
-	if contentLenStart+4 > len(data) {
+	if contentLenStart+2 > len(data) {
 		return nil, fmt.Errorf("packet too short for content_len")
 	}
 	packet.Content_len = binary.BigEndian.Uint16(data[contentLenStart : contentLenStart+2])

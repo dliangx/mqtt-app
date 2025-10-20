@@ -6,6 +6,71 @@ import (
 	"testing"
 )
 
+func TestPacketStructure(t *testing.T) {
+	// 验证数据包字段位置计算
+	fmt.Println("数据包字段位置验证:")
+	fmt.Println("========================")
+
+	// 字段位置计算
+	totalLenStart := 0
+	totalLenEnd := 4
+	cmdCodeStart := 4
+	cmdCodeEnd := 5
+	tokenStart := 5
+	tokenEnd := 25
+	msgIdLenStart := 25
+	msgIdLenEnd := 26
+
+	fmt.Printf("Total_len:  字节 %d-%d (%d字节)\n", totalLenStart, totalLenEnd-1, totalLenEnd-totalLenStart)
+	fmt.Printf("Cmd_code:   字节 %d (%d字节)\n", cmdCodeStart, cmdCodeEnd-cmdCodeStart)
+	fmt.Printf("Token:      字节 %d-%d (%d字节)\n", tokenStart, tokenEnd-1, tokenEnd-tokenStart)
+	fmt.Printf("Msg_id_len: 字节 %d (%d字节)\n", msgIdLenStart, msgIdLenEnd-msgIdLenStart)
+
+	// 示例：假设 msg_id_len = 8
+	msgIdLen := uint8(8)
+	msgIdStart := 26
+	msgIdEnd := msgIdStart + int(msgIdLen)
+	fmt.Printf("\nMsg_id (长度=%d): 字节 %d-%d (%d字节)\n", msgIdLen, msgIdStart, msgIdEnd-1, msgIdEnd-msgIdStart)
+
+	contentLenStart := msgIdEnd
+	contentLenEnd := contentLenStart + 2
+	fmt.Printf("Content_len: 字节 %d-%d (%d字节)\n", contentLenStart, contentLenEnd-1, contentLenEnd-contentLenStart)
+
+	// 示例：假设 content_len = 20
+	contentLen := uint16(20)
+	contentStart := contentLenEnd
+	contentEnd := contentStart + int(contentLen)
+	fmt.Printf("Content (长度=%d): 字节 %d-%d (%d字节)\n", contentLen, contentStart, contentEnd-1, contentEnd-contentStart)
+
+	fmt.Printf("\n最小数据包长度: %d字节\n", contentEnd)
+
+	// 验证字节范围计算
+	fmt.Println("\n字节范围验证:")
+	fmt.Printf("data[5:25] 包含字节: 5,6,...,24 (共%d字节)\n", 25-5)
+	fmt.Printf("data[26:34] 包含字节: 26,27,...,33 (共%d字节)\n", 34-26)
+
+	// 测试实际数据解析
+	fmt.Println("\n测试实际数据解析:")
+	testData := make([]byte, 100)
+	// 设置一些测试数据
+	testData[4] = 0x01                              // cmd_code
+	testData[25] = 0x08                             // msg_id_len = 8
+	binary.BigEndian.PutUint16(testData[34:36], 20) // content_len = 20
+
+	// 解析测试
+	token := testData[5:25]
+	fmt.Printf("Token长度: %d字节\n", len(token))
+
+	msgId := testData[26:34]
+	fmt.Printf("Msg_id长度: %d字节\n", len(msgId))
+
+	contentLenValue := binary.BigEndian.Uint16(testData[34:36])
+	fmt.Printf("Content_len值: %d\n", contentLenValue)
+
+	content := testData[36:56]
+	fmt.Printf("Content长度: %d字节\n", len(content))
+}
+
 func TestZyData(t *testing.T) {
 	// 测试用例
 	testCases := []struct {
