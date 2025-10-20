@@ -22,6 +22,7 @@ export const UsersPage = lazy(() => import('src/pages/users'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const ProductsPage = lazy(() => import('src/pages/products'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
+export const Blog = lazy(() => import('src/pages/blog'));
 
 const renderFallback = () => (
   <Box
@@ -61,6 +62,7 @@ export const routesSection: RouteObject[] = [
       { path: 'test-data', element: <TestDataPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'products', element: <ProductsPage /> },
+      { path: 'blog', element: <Blog /> },
     ],
   },
   {
