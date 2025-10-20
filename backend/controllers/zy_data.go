@@ -343,6 +343,10 @@ func HandleZyForwardData(c *gin.Context) {
 			} else {
 				// Process the parsed data (save to database, etc.)
 				fmt.Printf("Parsed content data: %+v\n", contentData)
+
+				// Create alert record with parsed content data
+				createZyDataAlert(contentData, data.Content)
+
 				response = ZyForwardDataResponse{
 					TotalLen: data.TotalLen,
 					CmdCode:  data.CmdCode,
@@ -366,6 +370,8 @@ func HandleZyForwardData(c *gin.Context) {
 					fmt.Printf("Error parsing content %d: %v\n", i, err)
 				} else {
 					fmt.Printf("Parsed content data %d: %+v\n", i, contentData)
+					// Create alert record with parsed content data
+					createZyDataAlert(contentData, content)
 					successCount++
 				}
 			}
@@ -378,4 +384,22 @@ func HandleZyForwardData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// createZyDataAlert creates an alert record for ZY data
+func createZyDataAlert(contentData *ContentData, rawContent string) {
+	alert := models.Alert{
+		DeviceID:  uint(contentData.DeviceType),
+		Type:      "99",
+		Message:   "中移数据",
+		Level:     "warning",
+		Read:      false,
+		Timestamp: time.Now().Unix(),
+		RawData:   rawContent,
+		ParsedData: fmt.Sprintf(`{"device_type":%d,"datetime":"%s","latitude":%f,"longitude":%f,"altitude":%d,"snr":%d,"temperature":%d,"voltage":%.1f}`,
+			contentData.DeviceType, contentData.DateTime, contentData.Latitude, contentData.Longitude,
+			contentData.Altitude, contentData.SNR, contentData.Temperature, contentData.Voltage),
+	}
+	database.DB.Create(&alert)
+	fmt.Printf("Created ZY data alert for device type: %d\n", contentData.DeviceType)
 }
