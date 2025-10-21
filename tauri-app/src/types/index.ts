@@ -1,8 +1,18 @@
+export interface DeviceGroup {
+  id: number;
+  name: string;
+  description?: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Device {
   id: number;
   name: string;
   topic: string;
   user_id: number;
+  group_id?: number;
   longitude: number;
   latitude: number;
   address: string;

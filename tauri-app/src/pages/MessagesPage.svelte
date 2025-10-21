@@ -38,7 +38,7 @@
                 const messageIndex = i % messages.length;
 
                 testData.push({
-                    id: i,
+                    ID: i,
                     device_id: deviceIndex + 1,
                     type: "alert",
                     message: messages[messageIndex],
@@ -53,7 +53,7 @@
                     ).toISOString(),
 
                     device: {
-                        id: deviceIndex + 1,
+                        ID: deviceIndex + 1,
                         name: devices[deviceIndex],
                         topic: `device/${deviceIndex + 1}`,
                         user_id: 1,
@@ -91,7 +91,8 @@
 
         // 如果消息未读，标记为已读
         if (!alert.read) {
-            markAsRead(alert.id);
+            // Validate alert ID before marking as read
+            // markAsRead(alert.ID);
         }
     }
 
@@ -257,7 +258,10 @@
                                 {#if !alert.read}
                                     <button
                                         class="mark-read-btn"
-                                        onclick={() => markAsRead(alert.id)}
+                                        on:click={(e) => {
+                                            e.stopPropagation();
+                                            markAsRead(alert.ID);
+                                        }}
                                     >
                                         标记已读
                                     </button>

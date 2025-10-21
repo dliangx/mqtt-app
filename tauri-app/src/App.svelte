@@ -47,6 +47,11 @@
         } catch (err) {
             error = "获取数据失败";
             console.error("Failed to fetch data:", err);
+
+            // Auto-hide error message after 5 seconds
+            setTimeout(() => {
+                error = "";
+            }, 5000);
         } finally {
             loading = false;
         }
@@ -97,7 +102,9 @@
     async function fetchAlerts() {
         try {
             const response = await apiService.getAlerts();
+            console.log("fetchAlerts response:", response);
             alerts = Array.isArray(response) ? [...response] : [];
+            console.log("Processed alerts:", alerts);
         } catch (err) {
             console.error("Failed to fetch alerts:", err);
             if (err.response?.status === 400) {
@@ -126,8 +133,18 @@
             success = "标记为已读成功";
             fetchAlerts();
             fetchUnreadAlerts();
+
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                success = "";
+            }, 3000);
         } catch (err) {
             error = "标记为已读失败";
+
+            // Auto-hide error message after 5 seconds
+            setTimeout(() => {
+                error = "";
+            }, 3000);
         }
     }
 

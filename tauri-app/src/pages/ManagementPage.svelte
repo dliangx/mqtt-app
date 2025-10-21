@@ -1,4 +1,5 @@
 <script>
+    import { onMount } from "svelte";
     import { apiService } from "../services/api";
 
     export let devices = [];
@@ -6,21 +7,51 @@
     export let onRefresh = () => {};
 
     let addDeviceDialog = false;
+    let editDeviceDialog = false;
+
     let newDevice = {
         name: "",
         topic: "",
+        group_id: undefined,
         longitude: 0,
         latitude: 0,
         address: "",
     };
 
+    let editingDevice = null;
+    let deviceGroups = [];
+    let deviceGroupsLoading = true;
+
+    async function fetchDeviceGroups() {
+        try {
+            deviceGroupsLoading = true;
+            const response = await apiService.getDeviceGroups();
+            const newDeviceGroups = Array.isArray(response?.data)
+                ? response.data
+                : Array.isArray(response)
+                  ? response
+                  : [];
+            deviceGroups = newDeviceGroups;
+        } catch (err) {
+            console.error("Failed to fetch device groups:", err);
+        } finally {
+            deviceGroupsLoading = false;
+        }
+    }
+
     async function handleAddDevice() {
         try {
-            await apiService.createDevice(newDevice);
+            await apiService.createDevice({
+                ...newDevice,
+                group_id: newDevice.group_id
+                    ? Number(newDevice.group_id)
+                    : undefined,
+            });
             addDeviceDialog = false;
             newDevice = {
                 name: "",
                 topic: "",
+                group_id: undefined,
                 longitude: 0,
                 latitude: 0,
                 address: "",
@@ -28,6 +59,103 @@
             onRefresh?.();
         } catch (err) {
             console.error("Failed to add device:", err);
+        }
+    }
+
+    async function handleEditDevice() {
+        if (!editingDevice) return;
+
+        try {
+            const deviceId = editingDevice.id || editingDevice.ID;
+            await apiService.updateDevice(deviceId, {
+                name: newDevice.name,
+                topic: newDevice.topic,
+                group_id: newDevice.group_id
+                    ? Number(newDevice.group_id)
+                    : undefined,
+                longitude: newDevice.longitude,
+                latitude: newDevice.latitude,
+                address: newDevice.address,
+            });
+            editDeviceDialog = false;
+            editingDevice = null;
+            newDevice = {
+                name: "",
+                topic: "",
+                group_id: undefined,
+                longitude: 0,
+                latitude: 0,
+                address: "",
+            };
+            onRefresh?.();
+        } catch (err) {
+            console.error("Failed to update device:", err);
+        }
+    }
+
+    async function handleDeleteDevice(id) {
+        try {
+            await apiService.deleteDevice(id);
+            onRefresh?.();
+        } catch (err) {
+            console.error("Failed to delete device:", err);
+        }
+    }
+
+    function openAddDialog() {
+        addDeviceDialog = true;
+    }
+
+    function openEditDialog(device) {
+        editingDevice = device;
+        newDevice = {
+            name: device.name,
+            topic: device.topic,
+            group_id: device.group_id,
+            longitude: device.longitude,
+            latitude: device.latitude,
+            address: device.address,
+        };
+        editDeviceDialog = true;
+    }
+
+    function closeAddDialog() {
+        addDeviceDialog = false;
+        newDevice = {
+            name: "",
+            topic: "",
+            group_id: undefined,
+            longitude: 0,
+            latitude: 0,
+            address: "",
+        };
+    }
+
+    function closeEditDialog() {
+        editDeviceDialog = false;
+        editingDevice = null;
+        newDevice = {
+            name: "",
+            topic: "",
+            group_id: undefined,
+            longitude: 0,
+            latitude: 0,
+            address: "",
+        };
+    }
+
+    function handleOverlayKeyDown(event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            closeAddDialog();
+            closeEditDialog();
+        }
+    }
+
+    function handleDialogKeyDown(event) {
+        if (event.key === "Escape") {
+            closeAddDialog();
+            closeEditDialog();
         }
     }
 
@@ -57,33 +185,15 @@
         }
     }
 
-    function openAddDialog() {
-        addDeviceDialog = true;
+    function formatDateTime(timestamp) {
+        if (!timestamp) return "未知";
+        return new Date(timestamp).toLocaleString();
     }
 
-    function closeAddDialog() {
-        addDeviceDialog = false;
-        newDevice = {
-            name: "",
-            topic: "",
-            longitude: 0,
-            latitude: 0,
-            address: "",
-        };
-    }
-
-    function handleOverlayKeyDown(event) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            closeAddDialog();
-        }
-    }
-
-    function handleDialogKeyDown(event) {
-        if (event.key === "Escape") {
-            closeAddDialog();
-        }
-    }
+    // Initialize device groups on component mount
+    onMount(() => {
+        fetchDeviceGroups();
+    });
 </script>
 
 <div class="management-page">
@@ -94,7 +204,7 @@
 
     <div class="content">
         <div class="actions">
-            <button class="add-btn" onclick={openAddDialog}>
+            <button class="add-btn" on:click={openAddDialog}>
                 <span class="icon">+</span>
                 添加设备
             </button>
@@ -124,6 +234,26 @@
                             <p>{device.topic}</p>
                         </div>
 
+                        <div class="device-info">
+                            <span class="info-label">设备组:</span>
+                            <p>
+                                {#if !device.group_id}
+                                    未分组
+                                {:else if deviceGroupsLoading}
+                                    加载中...
+                                {:else}
+                                    {#each deviceGroups as group}
+                                        {#if group.id === device.group_id || group.ID === device.group_id}
+                                            {group.name}
+                                        {/if}
+                                    {/each}
+                                    {#if !deviceGroups.some((g) => g.id === device.group_id || g.ID === device.group_id)}
+                                        未分组
+                                    {/if}
+                                {/if}
+                            </p>
+                        </div>
+
                         {#if device.longitude && device.latitude}
                             <div class="location-info">
                                 <span class="location-icon">📍</span>
@@ -140,6 +270,27 @@
                                 <p>{device.address}</p>
                             </div>
                         {/if}
+
+                        <div class="device-info">
+                            <span class="info-label">最后在线:</span>
+                            <p>{formatDateTime(device.last_seen)}</p>
+                        </div>
+
+                        <div class="device-actions">
+                            <button
+                                class="edit-btn"
+                                on:click={() => openEditDialog(device)}
+                            >
+                                编辑
+                            </button>
+                            <button
+                                class="delete-btn"
+                                on:click={() =>
+                                    handleDeleteDevice(device.id || device.ID)}
+                            >
+                                删除
+                            </button>
+                        </div>
                     </div>
                 </div>
             {/each}
@@ -158,8 +309,8 @@
             class="dialog-overlay"
             role="button"
             tabindex="0"
-            onclick={closeAddDialog}
-            onkeydown={handleOverlayKeyDown}
+            on:click={closeAddDialog}
+            on:keydown={handleOverlayKeyDown}
             aria-label="关闭对话框"
         >
             <div
@@ -167,14 +318,14 @@
                 role="dialog"
                 aria-labelledby="add-device-title"
                 aria-modal="true"
-                onclick={(e) => e.stopPropagation()}
-                onkeydown={handleDialogKeyDown}
+                on:click={(e) => e.stopPropagation()}
+                on:keydown={handleDialogKeyDown}
             >
                 <div class="dialog-header">
                     <h3 id="add-device-title">添加新设备</h3>
                     <button
                         class="close-btn"
-                        onclick={closeAddDialog}
+                        on:click={closeAddDialog}
                         aria-label="关闭对话框">×</button
                     >
                 </div>
@@ -199,6 +350,21 @@
                                 bind:value={newDevice.topic}
                                 placeholder="请输入设备 Topic"
                             />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="device-group">设备组</label>
+                            <select
+                                id="device-group"
+                                bind:value={newDevice.group_id}
+                            >
+                                <option value={undefined}>未分组</option>
+                                {#each deviceGroups as group}
+                                    <option value={String(group.ID || group.id)}
+                                        >{group.name}</option
+                                    >
+                                {/each}
+                            </select>
                         </div>
 
                         <div class="form-row">
@@ -238,15 +404,131 @@
                 </div>
 
                 <div class="dialog-actions">
-                    <button class="cancel-btn" onclick={closeAddDialog}
+                    <button class="cancel-btn" on:click={closeAddDialog}
                         >取消</button
                     >
                     <button
                         class="confirm-btn"
-                        onclick={handleAddDevice}
+                        on:click={handleAddDevice}
                         disabled={!newDevice.name || !newDevice.topic}
                     >
                         添加
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Edit Device Dialog -->
+    {#if editDeviceDialog}
+        <div
+            class="dialog-overlay"
+            role="button"
+            tabindex="0"
+            on:click={closeEditDialog}
+            on:keydown={handleOverlayKeyDown}
+            aria-label="关闭对话框"
+        >
+            <div
+                class="dialog"
+                role="dialog"
+                aria-labelledby="edit-device-title"
+                aria-modal="true"
+                on:click={(e) => e.stopPropagation()}
+                on:keydown={handleDialogKeyDown}
+            >
+                <div class="dialog-header">
+                    <h3 id="edit-device-title">编辑设备</h3>
+                    <button
+                        class="close-btn"
+                        on:click={closeEditDialog}
+                        aria-label="关闭对话框">×</button
+                    >
+                </div>
+
+                <div class="dialog-content">
+                    <div class="form">
+                        <div class="form-group">
+                            <label for="edit-device-name">设备名称 *</label>
+                            <input
+                                id="edit-device-name"
+                                type="text"
+                                bind:value={newDevice.name}
+                                placeholder="请输入设备名称"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-device-topic">设备 Topic *</label>
+                            <input
+                                id="edit-device-topic"
+                                type="text"
+                                bind:value={newDevice.topic}
+                                placeholder="请输入设备 Topic"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-device-group">设备组</label>
+                            <select
+                                id="edit-device-group"
+                                bind:value={newDevice.group_id}
+                            >
+                                <option value={undefined}>未分组</option>
+                                {#each deviceGroups as group}
+                                    <option value={String(group.ID || group.id)}
+                                        >{group.name}</option
+                                    >
+                                {/each}
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-device-longitude">经度</label>
+                                <input
+                                    id="edit-device-longitude"
+                                    type="number"
+                                    bind:value={newDevice.longitude}
+                                    placeholder="0"
+                                    step="0.000001"
+                                />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="edit-device-latitude">纬度</label>
+                                <input
+                                    id="edit-device-latitude"
+                                    type="number"
+                                    bind:value={newDevice.latitude}
+                                    placeholder="0"
+                                    step="0.000001"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-device-address">地址</label>
+                            <textarea
+                                id="edit-device-address"
+                                bind:value={newDevice.address}
+                                placeholder="请输入设备地址"
+                                rows="2"
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dialog-actions">
+                    <button class="cancel-btn" on:click={closeEditDialog}
+                        >取消</button
+                    >
+                    <button
+                        class="confirm-btn"
+                        on:click={handleEditDevice}
+                        disabled={!newDevice.name || !newDevice.topic}
+                    >
+                        保存
                     </button>
                 </div>
             </div>
@@ -256,7 +538,7 @@
 
 <style>
     .management-page {
-        height: 100;
+        height: 100%;
         overflow-y: auto;
         background-color: #f5f5f5;
     }
@@ -319,9 +601,8 @@
 
     .device-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 16px;
-        margin-top: 16px;
     }
 
     .device-card {
@@ -400,6 +681,40 @@
         font-size: 12px;
         color: #666;
         line-height: 1.4;
+    }
+
+    .device-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .edit-btn,
+    .delete-btn {
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .edit-btn {
+        background-color: #ff9800;
+        color: white;
+    }
+
+    .edit-btn:hover {
+        background-color: #f57c00;
+    }
+
+    .delete-btn {
+        background-color: #f44336;
+        color: white;
+    }
+
+    .delete-btn:hover {
+        background-color: #d32f2f;
     }
 
     .empty-state {
@@ -505,16 +820,22 @@
     }
 
     .form-group input,
-    .form-group textarea {
+    .form-group textarea,
+    .form-group select {
         padding: 8px 12px;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 14px;
         transition: border-color 0.2s ease;
+        background-color: white;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .form-group input:focus,
-    .form-group textarea:focus {
+    .form-group textarea:focus,
+    .form-group select:focus {
         outline: none;
         border-color: #1976d2;
     }

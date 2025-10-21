@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Device, Alert } from "../types";
+import type { Device, Alert, DeviceGroup } from "../types";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8080/api";
@@ -68,10 +68,23 @@ export const apiService = {
   createDevice: (deviceData: {
     name: string;
     topic: string;
+    group_id?: number;
     longitude?: number;
     latitude?: number;
     address?: string;
   }) => api.post<ApiResponse<Device>>("/devices", deviceData),
+
+  updateDevice: (
+    id: number,
+    deviceData: {
+      name: string;
+      topic: string;
+      group_id?: number;
+      longitude?: number;
+      latitude?: number;
+      address?: string;
+    },
+  ) => api.put<ApiResponse<Device>>(`/devices/${id}`, deviceData),
 
   deleteDevice: (id: number) => api.delete<ApiResponse>(`/devices/${id}`),
 
@@ -86,6 +99,12 @@ export const apiService = {
 
   updateDeviceStatus: (id: number, statusData: { status: string }) =>
     api.put<ApiResponse>(`/devices/${id}/status`, statusData),
+
+  // Device Groups
+  getDeviceGroups: () =>
+    api
+      .get<ApiResponse<DeviceGroup[]>>("/device-groups")
+      .then((response) => response.data),
 
   // Alerts
   getAlerts: () =>
