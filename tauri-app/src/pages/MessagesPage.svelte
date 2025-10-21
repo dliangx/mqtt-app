@@ -503,6 +503,7 @@
 
         <!-- Send Message Dialog -->
         {#if showSendMessageDialog}
+            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
             <div
                 class="dialog-overlay"
                 on:keydown={handleSendMessageKeyDown}
@@ -648,17 +649,6 @@
     .send-message-dialog textarea:disabled {
         background-color: #f5f5f5;
         cursor: not-allowed;
-    }
-
-    .hint {
-        margin-top: 8px;
-        text-align: right;
-    }
-
-    .hint-text {
-        font-size: 12px;
-        color: #666;
-        font-style: italic;
     }
 
     .send-btn {

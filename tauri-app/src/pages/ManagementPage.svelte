@@ -368,6 +368,7 @@
             on:keydown={handleOverlayKeyDown}
             aria-label="关闭对话框"
         >
+            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
             <div
                 class="dialog"
                 role="dialog"
@@ -484,6 +485,7 @@
             on:keydown={handleOverlayKeyDown}
             aria-label="关闭对话框"
         >
+            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
             <div
                 class="dialog"
                 role="dialog"

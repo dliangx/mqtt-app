@@ -12,13 +12,13 @@ import {
   Chip,
   Paper,
   Button,
+  Dialog,
   Typography,
   IconButton,
-  LinearProgress,
-  Dialog,
+  DialogTitle,
   DialogActions,
   DialogContent,
-  DialogTitle,
+  LinearProgress,
 } from '@mui/material';
 
 import { useRouter } from 'src/routes/hooks';
