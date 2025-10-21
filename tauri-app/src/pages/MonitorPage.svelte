@@ -471,7 +471,7 @@
         const deviceAlerts = alerts.filter(
             (alert) =>
                 alert.device_id === selectedDevice.ID &&
-                alert.type === "1" &&
+                (alert.type === "1" || alert.type === "99") &&
                 alert.parsed_data,
         );
 

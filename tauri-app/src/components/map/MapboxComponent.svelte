@@ -26,6 +26,8 @@
     let navigationLine = null;
     let historyTrackLayerId = "history-track";
     let historyTrackSourceId = "history-track";
+    let historyPointsLayerId = "history-points";
+    let historyPointsSourceId = "history-points";
 
     // 导航状态事件
     export let onNavigationStart = () => {};
@@ -710,10 +712,29 @@
             },
         };
 
+        // 创建轨迹点集合
+        const points = {
+            type: "FeatureCollection",
+            features: validCoordinates.map((coord, index) => ({
+                type: "Feature",
+                properties: { index },
+                geometry: {
+                    type: "Point",
+                    coordinates: coord,
+                },
+            })),
+        };
+
         // 添加轨迹源
         mapInstance.addSource(historyTrackSourceId, {
             type: "geojson",
             data: lineString,
+        });
+
+        // 添加轨迹点源
+        mapInstance.addSource(historyPointsSourceId, {
+            type: "geojson",
+            data: points,
         });
 
         // 添加轨迹图层
@@ -729,6 +750,20 @@
                 "line-color": "#ff6b35",
                 "line-width": 6,
                 "line-opacity": 0.9,
+            },
+        });
+
+        // 添加轨迹点图层（绿色小圆点）
+        mapInstance.addLayer({
+            id: historyPointsLayerId,
+            type: "circle",
+            source: historyPointsSourceId,
+            paint: {
+                "circle-radius": 6,
+                "circle-color": "#22c55e",
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#ffffff",
+                "circle-opacity": 0.9,
             },
         });
 
@@ -755,6 +790,14 @@
 
         if (mapInstance.getSource(historyTrackSourceId)) {
             mapInstance.removeSource(historyTrackSourceId);
+        }
+
+        if (mapInstance.getLayer(historyPointsLayerId)) {
+            mapInstance.removeLayer(historyPointsLayerId);
+        }
+
+        if (mapInstance.getSource(historyPointsSourceId)) {
+            mapInstance.removeSource(historyPointsSourceId);
         }
     }
 
