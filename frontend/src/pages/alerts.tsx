@@ -246,15 +246,12 @@ export default function AlertsPage() {
                 </Box>
                 {selectedAlert.raw_data && (
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      原始数据
-                    </Typography>
+                    <Typography variant="subtitle2">原始数据</Typography>
                     <Paper
                       variant="outlined"
                       sx={{
                         p: 2,
                         mt: 1,
-                        backgroundColor: 'grey.50',
                         fontFamily: 'monospace',
                         fontSize: '0.875rem',
                         wordBreak: 'break-all',
@@ -266,17 +263,12 @@ export default function AlertsPage() {
                 )}
                 {selectedAlert.parsed_data && (
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      解析数据
-                    </Typography>
+                    <Typography variant="subtitle2">解析数据</Typography>
                     <Paper
                       variant="outlined"
                       sx={{
                         p: 2,
                         mt: 1,
-                        backgroundColor: 'grey.50',
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
                         maxHeight: 200,
                         overflow: 'auto',
                       }}
