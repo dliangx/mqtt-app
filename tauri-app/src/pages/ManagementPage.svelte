@@ -4,6 +4,7 @@
     export let devices = [];
     export let loading = false;
     export let deviceGroups = [];
+    export let onUpdateDevices = (devices) => {};
 
     let success = "";
     let error = "";
@@ -34,7 +35,10 @@
             // Add the new device to the devices array with the returned data
             if (response.data) {
                 const newDeviceData = response.data;
-                devices = [...devices, newDeviceData];
+                const updatedDevices = [...devices, newDeviceData];
+                devices = updatedDevices;
+                // Update parent component
+                onUpdateDevices(updatedDevices);
             }
 
             success = "设备添加成功";
@@ -87,8 +91,11 @@
                     (device) => (device.id || device.ID) === deviceId,
                 );
                 if (deviceIndex !== -1) {
-                    devices[deviceIndex] = updatedDevice;
-                    devices = devices; // Trigger reactivity
+                    const updatedDevices = [...devices];
+                    updatedDevices[deviceIndex] = updatedDevice;
+                    devices = updatedDevices; // Trigger reactivity
+                    // Update parent component
+                    onUpdateDevices(updatedDevices);
                 }
             }
 
@@ -123,9 +130,12 @@
         try {
             await apiService.deleteDevice(id);
             // Remove the device from the devices array directly
-            devices = devices.filter(
+            const updatedDevices = devices.filter(
                 (device) => (device.id || device.ID) !== id,
             );
+            devices = updatedDevices;
+            // Update parent component
+            onUpdateDevices(updatedDevices);
             success = "设备删除成功";
 
             // Auto-hide success message after 3 seconds

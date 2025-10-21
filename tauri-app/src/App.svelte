@@ -19,6 +19,11 @@
     let isAuthenticated = !!localStorage.getItem("token");
     let deviceGroups = [];
 
+    // Function to update devices from child components
+    function updateDevices(updatedDevices) {
+        devices = updatedDevices;
+    }
+
     let intervalId;
 
     onMount(() => {
@@ -234,7 +239,12 @@
             {#if currentTab === 0}
                 <MonitorPage {devices} {alerts} onRefresh={handleRefresh} />
             {:else if currentTab === 1}
-                <ManagementPage {devices} {loading} {deviceGroups} />
+                <ManagementPage
+                    {devices}
+                    {loading}
+                    {deviceGroups}
+                    onUpdateDevices={updateDevices}
+                />
             {:else if currentTab === 2}
                 <MessagesPage
                     {alerts}
