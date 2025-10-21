@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -346,7 +347,7 @@ func HandleZyForwardData(c *gin.Context) {
 				fmt.Printf("Parsed content data: %+v\n", contentData)
 
 				// Create alert record with parsed content data
-				createZyDataAlert(contentData, data.Content)
+				createZyDataAlert(data.MsgID, contentData, data.Content)
 
 				response = ZyForwardDataResponse{
 					TotalLen: data.TotalLen,
@@ -373,7 +374,7 @@ func HandleZyForwardData(c *gin.Context) {
 				} else {
 					fmt.Printf("Parsed content data %d: %+v\n", i, contentData)
 					// Create alert record with parsed content data
-					createZyDataAlert(contentData, content)
+					createZyDataAlert(data.MsgID, contentData, content)
 					successCount++
 				}
 			}
@@ -389,14 +390,22 @@ func HandleZyForwardData(c *gin.Context) {
 }
 
 // createZyDataAlert creates an alert record for ZY data
-func createZyDataAlert(contentData *ContentData, rawContent string) {
+func createZyDataAlert(msgID string, contentData *ContentData, rawContent string) {
 	// 使用默认设备ID 1，因为DeviceType可能不是有效的设备ID
-	deviceID := uint(1)
+	deviceID := strings.Split(msgID, "_")[0]
+
+	// 将deviceID字符串转换为整数
+	deviceIDUint, err := strconv.ParseUint(deviceID, 10, 32)
+	if err != nil {
+		// 如果转换失败，使用默认设备ID 1
+		deviceIDUint = 0
+		fmt.Printf("Failed to convert deviceID '%s' to uint, using default ID 1\n", deviceID)
+	}
 
 	alert := models.Alert{
-		DeviceID:  deviceID,
+		DeviceID:  uint(deviceIDUint),
 		Type:      "99",
-		Message:   "中移数据",
+		Message:   msgID,
 		Level:     "warning",
 		Read:      false,
 		Timestamp: time.Now().Unix(),
