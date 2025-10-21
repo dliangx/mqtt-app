@@ -5,6 +5,9 @@
     export let loading = false;
     export let deviceGroups = [];
 
+    let success = "";
+    let error = "";
+
     let addDeviceDialog = false;
     let editDeviceDialog = false;
 
@@ -34,6 +37,7 @@
                 devices = [...devices, newDeviceData];
             }
 
+            success = "设备添加成功";
             addDeviceDialog = false;
             newDevice = {
                 name: "",
@@ -43,8 +47,19 @@
                 latitude: 0,
                 address: "",
             };
+
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                success = "";
+            }, 3000);
         } catch (err) {
+            error = "设备添加失败";
             console.error("Failed to add device:", err);
+
+            // Auto-hide error message after 5 seconds
+            setTimeout(() => {
+                error = "";
+            }, 5000);
         }
     }
 
@@ -77,6 +92,7 @@
                 }
             }
 
+            success = "设备更新成功";
             editDeviceDialog = false;
             editingDevice = null;
             newDevice = {
@@ -87,8 +103,19 @@
                 latitude: 0,
                 address: "",
             };
+
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                success = "";
+            }, 3000);
         } catch (err) {
+            error = "设备更新失败";
             console.error("Failed to update device:", err);
+
+            // Auto-hide error message after 5 seconds
+            setTimeout(() => {
+                error = "";
+            }, 5000);
         }
     }
 
@@ -99,8 +126,20 @@
             devices = devices.filter(
                 (device) => (device.id || device.ID) !== id,
             );
+            success = "设备删除成功";
+
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                success = "";
+            }, 3000);
         } catch (err) {
+            error = "设备删除失败";
             console.error("Failed to delete device:", err);
+
+            // Auto-hide error message after 5 seconds
+            setTimeout(() => {
+                error = "";
+            }, 5000);
         }
     }
 
@@ -191,6 +230,14 @@
     function formatDateTime(timestamp) {
         if (!timestamp) return "未知";
         return new Date(timestamp).toLocaleString();
+    }
+
+    function clearError() {
+        error = "";
+    }
+
+    function clearSuccess() {
+        success = "";
     }
 </script>
 
@@ -530,6 +577,19 @@
                     </button>
                 </div>
             </div>
+        </div>
+    {/if}
+    {#if error}
+        <div class="snackbar error">
+            <span>{error}</span>
+            <button on:click={clearError}>×</button>
+        </div>
+    {/if}
+
+    {#if success}
+        <div class="snackbar success">
+            <span>{success}</span>
+            <button on:click={clearSuccess}>×</button>
         </div>
     {/if}
 </div>
@@ -884,5 +944,43 @@
     .confirm-btn:disabled {
         background-color: #ccc;
         cursor: not-allowed;
+    }
+
+    .snackbar {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 9999;
+        max-width: 90%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .snackbar.error {
+        background-color: #f44336;
+    }
+
+    .snackbar.success {
+        background-color: #4caf50;
+    }
+
+    .snackbar button {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>
