@@ -1,10 +1,9 @@
 <script>
-    import { onMount } from "svelte";
     import { apiService } from "../services/api";
 
     export let devices = [];
     export let loading = false;
-    export let onRefresh = () => {};
+    export let deviceGroups = [];
 
     let addDeviceDialog = false;
     let editDeviceDialog = false;
@@ -19,34 +18,22 @@
     };
 
     let editingDevice = null;
-    let deviceGroups = [];
-    let deviceGroupsLoading = true;
-
-    async function fetchDeviceGroups() {
-        try {
-            deviceGroupsLoading = true;
-            const response = await apiService.getDeviceGroups();
-            const newDeviceGroups = Array.isArray(response?.data)
-                ? response.data
-                : Array.isArray(response)
-                  ? response
-                  : [];
-            deviceGroups = newDeviceGroups;
-        } catch (err) {
-            console.error("Failed to fetch device groups:", err);
-        } finally {
-            deviceGroupsLoading = false;
-        }
-    }
 
     async function handleAddDevice() {
         try {
-            await apiService.createDevice({
+            const response = await apiService.createDevice({
                 ...newDevice,
                 group_id: newDevice.group_id
                     ? Number(newDevice.group_id)
                     : undefined,
             });
+
+            // Add the new device to the devices array with the returned data
+            if (response.data) {
+                const newDeviceData = response.data;
+                devices = [...devices, newDeviceData];
+            }
+
             addDeviceDialog = false;
             newDevice = {
                 name: "",
@@ -56,7 +43,6 @@
                 latitude: 0,
                 address: "",
             };
-            onRefresh?.();
         } catch (err) {
             console.error("Failed to add device:", err);
         }
@@ -67,27 +53,40 @@
 
         try {
             const deviceId = editingDevice.id || editingDevice.ID;
-            await apiService.updateDevice(deviceId, {
+            console.log(newDevice);
+            const response = await apiService.updateDevice(deviceId, {
                 name: newDevice.name,
                 topic: newDevice.topic,
                 group_id: newDevice.group_id
                     ? Number(newDevice.group_id)
-                    : undefined,
+                    : null,
                 longitude: newDevice.longitude,
                 latitude: newDevice.latitude,
                 address: newDevice.address,
             });
+
+            // Update the device in the devices array with the returned data
+            if (response.data) {
+                const updatedDevice = response.data;
+                const deviceIndex = devices.findIndex(
+                    (device) => (device.id || device.ID) === deviceId,
+                );
+                if (deviceIndex !== -1) {
+                    devices[deviceIndex] = updatedDevice;
+                    devices = devices; // Trigger reactivity
+                }
+            }
+
             editDeviceDialog = false;
             editingDevice = null;
             newDevice = {
                 name: "",
                 topic: "",
-                group_id: undefined,
+                group_id: null,
                 longitude: 0,
                 latitude: 0,
                 address: "",
             };
-            onRefresh?.();
         } catch (err) {
             console.error("Failed to update device:", err);
         }
@@ -96,7 +95,10 @@
     async function handleDeleteDevice(id) {
         try {
             await apiService.deleteDevice(id);
-            onRefresh?.();
+            // Remove the device from the devices array directly
+            devices = devices.filter(
+                (device) => (device.id || device.ID) !== id,
+            );
         } catch (err) {
             console.error("Failed to delete device:", err);
         }
@@ -116,6 +118,7 @@
             latitude: device.latitude,
             address: device.address,
         };
+
         editDeviceDialog = true;
     }
 
@@ -137,7 +140,7 @@
         newDevice = {
             name: "",
             topic: "",
-            group_id: undefined,
+            group_id: null,
             longitude: 0,
             latitude: 0,
             address: "",
@@ -189,11 +192,6 @@
         if (!timestamp) return "未知";
         return new Date(timestamp).toLocaleString();
     }
-
-    // Initialize device groups on component mount
-    onMount(() => {
-        fetchDeviceGroups();
-    });
 </script>
 
 <div class="management-page">
@@ -239,15 +237,15 @@
                             <p>
                                 {#if !device.group_id}
                                     未分组
-                                {:else if deviceGroupsLoading}
+                                {:else if loading}
                                     加载中...
                                 {:else}
                                     {#each deviceGroups as group}
-                                        {#if group.id === device.group_id || group.ID === device.group_id}
+                                        {#if group.ID === device.group_id}
                                             {group.name}
                                         {/if}
                                     {/each}
-                                    {#if !deviceGroups.some((g) => g.id === device.group_id || g.ID === device.group_id)}
+                                    {#if !deviceGroups.some((g) => g.ID === device.group_id)}
                                         未分组
                                     {/if}
                                 {/if}
@@ -474,9 +472,9 @@
                                 id="edit-device-group"
                                 bind:value={newDevice.group_id}
                             >
-                                <option value={undefined}>未分组</option>
+                                <option value={null}>未分组</option>
                                 {#each deviceGroups as group}
-                                    <option value={String(group.ID || group.id)}
+                                    <option value={group.ID}
                                         >{group.name}</option
                                     >
                                 {/each}

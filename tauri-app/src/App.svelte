@@ -17,6 +17,7 @@
     let error = "";
     let success = "";
     let isAuthenticated = !!localStorage.getItem("token");
+    let deviceGroups = [];
 
     let intervalId;
 
@@ -43,6 +44,7 @@
                 fetchDevices(),
                 fetchAlerts(),
                 fetchUnreadAlerts(),
+                fetchDeviceGroups(),
             ]);
         } catch (err) {
             error = "获取数据失败";
@@ -61,7 +63,7 @@
         try {
             const response = await apiService.getDevices();
             const devicesData = Array.isArray(response) ? [...response] : [];
-
+            console.log(devicesData);
             // 只有当设备数据实际发生变化时才更新
             const currentDevicesHash = JSON.stringify(
                 devicesData.map((device) => ({
@@ -123,6 +125,15 @@
         }
     }
 
+    async function fetchDeviceGroups() {
+        try {
+            const response = await apiService.getDeviceGroups();
+            deviceGroups = Array.isArray(response) ? [...response] : [];
+        } catch (err) {
+            console.error("Failed to fetch device groups:", err);
+        }
+    }
+
     function handleRefresh() {
         fetchData();
     }
@@ -131,8 +142,18 @@
         try {
             await apiService.markAlertAsRead(alertId);
             success = "标记为已读成功";
-            fetchAlerts();
-            fetchUnreadAlerts();
+
+            // Update local state directly instead of refetching
+            const alertIndex = alerts.findIndex(
+                (alert) => (alert.id || alert.ID) === alertId,
+            );
+            if (alertIndex !== -1) {
+                alerts[alertIndex].read = true;
+                alerts = alerts; // Trigger reactivity
+            }
+
+            // Update unread count
+            unreadAlerts = Math.max(0, unreadAlerts - 1);
 
             // Auto-hide success message after 3 seconds
             setTimeout(() => {
@@ -213,7 +234,7 @@
             {#if currentTab === 0}
                 <MonitorPage {devices} {alerts} onRefresh={handleRefresh} />
             {:else if currentTab === 1}
-                <ManagementPage {devices} {loading} onRefresh={handleRefresh} />
+                <ManagementPage {devices} {loading} {deviceGroups} />
             {:else if currentTab === 2}
                 <MessagesPage
                     {alerts}

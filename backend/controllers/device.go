@@ -80,11 +80,7 @@ func UpdateDeviceLocation(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.MustGet("userID").(uint)
 
-	var input struct {
-		Longitude float64 `json:"longitude" binding:"required"`
-		Latitude  float64 `json:"latitude" binding:"required"`
-		Address   string  `json:"address"`
-	}
+	var input models.Device
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -139,14 +135,7 @@ func UpdateDevice(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.MustGet("userID").(uint)
 
-	var input struct {
-		Name      string  `json:"name"`
-		Topic     string  `json:"topic"`
-		GroupID   *uint   `json:"group_id"`
-		Longitude float64 `json:"longitude"`
-		Latitude  float64 `json:"latitude"`
-		Address   string  `json:"address"`
-	}
+	var input models.Device
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
