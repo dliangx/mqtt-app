@@ -1,5 +1,6 @@
 <script>
     import { onMount } from "svelte";
+    import { apiService } from "../services/api";
 
     export let alerts = [];
     export let devices = [];
@@ -12,6 +13,13 @@
     let testAlerts = [];
     let selectedAlert = null;
     let showDetailModal = false;
+
+    // Send message dialog state
+    let showSendMessageDialog = false;
+    let messageContent = "";
+    let sendingMessage = false;
+    let sendMessageSuccess = "";
+    let sendMessageError = "";
 
     onMount(() => {
         // 生成测试数据
@@ -93,6 +101,89 @@
         if (!alert.read) {
             // Validate alert ID before marking as read
             // markAsRead(alert.ID);
+        }
+    }
+
+    // Send message functions
+    function openSendMessageDialog() {
+        showSendMessageDialog = true;
+        messageContent = "";
+        sendMessageSuccess = "";
+        sendMessageError = "";
+    }
+
+    function closeSendMessageDialog() {
+        showSendMessageDialog = false;
+        messageContent = "";
+        sendMessageSuccess = "";
+        sendMessageError = "";
+    }
+
+    function handleSendMessageKeyDown(event) {
+        if (event.key === "Escape") {
+            closeSendMessageDialog();
+        } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            if (messageContent.trim() && !sendingMessage) {
+                sendImportantMessage();
+            }
+        }
+    }
+
+    async function sendImportantMessage() {
+        if (!messageContent.trim()) {
+            sendMessageError = "请输入消息内容";
+            return;
+        }
+
+        sendingMessage = true;
+        sendMessageError = "";
+        sendMessageSuccess = "";
+
+        try {
+            // 发送重要消息到平台
+            // 这里假设使用第一个设备作为发送源，或者可以设置为系统消息
+            const deviceId =
+                devices.length > 0 ? devices[0].id || devices[0].ID : 1;
+
+            // 获取当前定位信息
+            let locationData = null;
+            try {
+                locationData = await getCurrentLocation();
+            } catch (locationError) {
+                console.warn("获取定位信息失败:", locationError);
+                // 定位失败不影响消息发送
+            }
+
+            await apiService.createAlert({
+                device_id: deviceId,
+                type: 9, //用户重要消息
+                message: messageContent,
+                level: "high", // 重要级别
+                raw_data: JSON.stringify({
+                    source: "user",
+                    location: locationData,
+                    timestamp: new Date().toISOString(),
+                }),
+            });
+
+            sendMessageSuccess = "重要消息发送成功！";
+            messageContent = "";
+
+            // 刷新消息列表
+            if (typeof onRefresh === "function") {
+                onRefresh();
+            }
+
+            // 3秒后关闭对话框
+            setTimeout(() => {
+                closeSendMessageDialog();
+            }, 3000);
+        } catch (err) {
+            console.error("Failed to send message:", err);
+            sendMessageError = "发送消息失败，请稍后重试";
+        } finally {
+            sendingMessage = false;
         }
     }
 
@@ -201,6 +292,56 @@
     function markAsRead(alertId) {
         onMarkAsRead?.(alertId);
     }
+
+    // 获取当前位置信息（仅Tauri GPS定位）
+    async function getCurrentLocation() {
+        // 只使用Tauri GPS定位
+        if (!window.__TAURI__) {
+            throw new Error("非Tauri环境，无法使用GPS定位");
+        }
+
+        try {
+            // 动态导入Tauri地理定位插件
+            const geolocationModule = await import(
+                "@tauri-apps/plugin-geolocation"
+            );
+
+            // 检查位置权限
+            let permissions = await geolocationModule.checkPermissions();
+
+            // 如果需要权限，请求权限
+            if (
+                permissions.location === "prompt" ||
+                permissions.location === "prompt-with-rationale"
+            ) {
+                permissions = await geolocationModule.requestPermissions([
+                    "location",
+                ]);
+            }
+
+            // 如果权限被授予，获取位置
+            if (permissions.location === "granted") {
+                const position = await geolocationModule.getCurrentPosition();
+                const location = {
+                    longitude: position.coords.longitude,
+                    latitude: position.coords.latitude,
+                    accuracy: position.coords.accuracy,
+                    altitudeAccuracy: position.coords.altitudeAccuracy,
+                    altitude: position.coords.altitude,
+                    speed: position.coords.speed,
+                    heading: position.coords.heading,
+                    source: "tauri-gps",
+                };
+                console.log("Tauri GPS定位成功");
+                return location;
+            } else {
+                throw new Error("位置权限被拒绝");
+            }
+        } catch (error) {
+            console.error("Tauri GPS定位失败:", error);
+            throw error;
+        }
+    }
 </script>
 
 <div class="messages-page">
@@ -210,6 +351,17 @@
     </header>
 
     <div class="content">
+        <!-- Send Message Button -->
+        <div class="send-message-section">
+            <button
+                class="send-message-btn"
+                on:click={openSendMessageDialog}
+                title="发送重要消息"
+            >
+                <span class="send-icon">📢</span>
+            </button>
+        </div>
+
         <!-- Test Mode Indicator -->
         {#if testMode}
             <div class="test-mode-indicator">
@@ -345,7 +497,78 @@
             {/if}
         {:else}
             <div class="empty-state">
-                <p>{loading ? "加载中..." : "暂无消息"}</p>
+                <p>暂无消息</p>
+            </div>
+        {/if}
+
+        <!-- Send Message Dialog -->
+        {#if showSendMessageDialog}
+            <div
+                class="dialog-overlay"
+                on:keydown={handleSendMessageKeyDown}
+                role="dialog"
+                aria-modal="true"
+            >
+                <div
+                    class="dialog send-message-dialog"
+                    role="dialog"
+                    aria-labelledby="send-message-title"
+                >
+                    <div class="dialog-header">
+                        <h3 id="send-message-title">重要消息</h3>
+                        <button
+                            class="close-btn"
+                            on:click={closeSendMessageDialog}
+                            aria-label="关闭"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div class="dialog-content">
+                        <div class="form">
+                            <div class="form-group">
+                                <textarea
+                                    id="message-content"
+                                    bind:value={messageContent}
+                                    placeholder="请输入要发送的重要消息内容..."
+                                    rows="6"
+                                    disabled={sendingMessage}
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dialog-actions">
+                        <button
+                            class="cancel-btn"
+                            on:click={closeSendMessageDialog}
+                            disabled={sendingMessage}
+                        >
+                            取消
+                        </button>
+                        <button
+                            class="confirm-btn send-btn"
+                            on:click={sendImportantMessage}
+                            disabled={sendingMessage || !messageContent.trim()}
+                        >
+                            {#if sendingMessage}
+                                <span class="loading-spinner">⏳</span>
+                                发送中...
+                            {:else}
+                                📢 发送
+                            {/if}
+                        </button>
+                    </div>
+                    {#if sendMessageError}
+                        <div class="error-message">
+                            {sendMessageError}
+                        </div>
+                    {/if}
+                    {#if sendMessageSuccess}
+                        <div class="success-message">
+                            {sendMessageSuccess}
+                        </div>
+                    {/if}
+                </div>
             </div>
         {/if}
     </div>
@@ -356,6 +579,216 @@
         height: 100;
         overflow-y: auto;
         background-color: #f5f5f5;
+    }
+
+    .send-message-section {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0 40px 0;
+        padding: 0 16px;
+    }
+
+    .send-message-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .send-message-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        background: linear-gradient(135deg, #ff5252, #ff7b7b);
+    }
+
+    .send-message-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    }
+
+    .send-icon {
+        font-size: 28px;
+    }
+
+    .send-message-dialog {
+        max-width: 500px;
+        width: 90%;
+    }
+
+    .send-message-dialog .dialog-content {
+        padding: 20px;
+    }
+
+    .send-message-dialog textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .send-message-dialog textarea:focus {
+        outline: none;
+        border-color: #ff6b6b;
+        box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+    }
+
+    .send-message-dialog textarea:disabled {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+
+    .hint {
+        margin-top: 8px;
+        text-align: right;
+    }
+
+    .hint-text {
+        font-size: 12px;
+        color: #666;
+        font-style: italic;
+    }
+
+    .send-btn {
+        background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+        border: none;
+    }
+
+    .send-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #ff5252, #ff7b7b);
+    }
+
+    .send-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .error-message {
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 12px;
+        margin: 16px;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .success-message {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+        padding: 12px;
+        margin: 16px;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .dialog {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+    }
+
+    .dialog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 20px 0 20px;
+    }
+
+    .dialog-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #666;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .close-btn:hover {
+        background-color: #f5f5f5;
+        color: #333;
+    }
+
+    .dialog-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        padding: 20px;
+        border-top: 1px solid #e0e0e0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .cancel-btn {
+        padding: 10px 20px;
+        border: 1px solid #ccc;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #333;
+    }
+
+    .cancel-btn:hover:not(:disabled) {
+        background-color: #f5f5f5;
+    }
+
+    .confirm-btn {
+        padding: 10px 20px;
+        border: none;
+        background: #1976d2;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .confirm-btn:hover:not(:disabled) {
+        background: #1565c0;
+    }
+
+    .confirm-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
     }
 
     .page-header {
