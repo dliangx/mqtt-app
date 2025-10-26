@@ -29,6 +29,9 @@ func main() {
 	// Connect to MQTT broker
 	mqtt.Connect()
 
+	// Static file service for uploaded icons
+	r.Static("/uploads", "./uploads")
+
 	// API routes
 	api := r.Group("/api")
 	{

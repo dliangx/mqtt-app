@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import type { User, Alert, Device, ApiResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -137,11 +137,42 @@ export const apiService = {
   getDeviceGroups: () =>
     api.get<ApiResponse<any[]>>('/device-groups').then((response) => response.data),
 
-  createDeviceGroup: (groupData: { name: string; description?: string }) =>
-    api.post<ApiResponse<any>>('/device-groups', groupData),
+  createDeviceGroup: (groupData: { name: string; description?: string; icon?: File }) => {
+    const formData = new FormData();
+    formData.append('name', groupData.name);
+    if (groupData.description) {
+      formData.append('description', groupData.description);
+    }
+    if (groupData.icon) {
+      formData.append('icon', groupData.icon);
+    }
+    return api.post<ApiResponse<any>>('/device-groups', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 
-  updateDeviceGroup: (id: number, groupData: { name?: string; description?: string }) =>
-    api.put<ApiResponse<any>>(`/device-groups/${id}`, groupData),
+  updateDeviceGroup: (
+    id: number,
+    groupData: { name?: string; description?: string; icon?: File }
+  ) => {
+    const formData = new FormData();
+    if (groupData.name) {
+      formData.append('name', groupData.name);
+    }
+    if (groupData.description) {
+      formData.append('description', groupData.description);
+    }
+    if (groupData.icon) {
+      formData.append('icon', groupData.icon);
+    }
+    return api.put<ApiResponse<any>>(`/device-groups/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 
   deleteDeviceGroup: (id: number) => api.delete<ApiResponse>(`/device-groups/${id}`),
 

@@ -44,6 +44,7 @@ export interface DeviceGroup {
   id: number;
   name: string;
   description?: string;
+  icon_url?: string;
   created_at: string;
   updated_at: string;
 }

@@ -11,6 +11,7 @@ type DeviceGroup struct {
 	gorm.Model
 	Name        string `gorm:"not null" json:"name"`
 	Description string `json:"description"`
+	IconURL     string `json:"icon_url"` // SVG图标URL
 }
 
 type Device struct {

@@ -1,6 +1,8 @@
+import React, { useState, useEffect, useCallback } from 'react';
+
 import type { Device, DeviceGroup } from 'src/types';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL, apiService } from 'src/services/api';
 
 import {
   Add as AddIcon,
@@ -37,7 +39,6 @@ import {
 } from '@mui/material';
 
 import { CONFIG } from 'src/config-global';
-import { apiService } from 'src/services/api';
 
 import { useSnackbar } from 'src/components/snackbar';
 
@@ -72,6 +73,8 @@ export default function DevicesPage() {
     name: '',
     description: '',
   });
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string>('');
 
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
@@ -118,9 +121,11 @@ export default function DevicesPage() {
 
   const handleAddGroup = async () => {
     try {
-      await apiService.createDeviceGroup(newGroup);
+      await apiService.createDeviceGroup({ ...newGroup, icon: iconFile || undefined });
       setAddGroupDialog(false);
       setNewGroup({ name: '', description: '' });
+      setIconFile(null);
+      setIconPreview('');
       enqueueSnackbar('设备组添加成功', { variant: 'success' });
       fetchDeviceGroups();
     } catch (err) {
@@ -133,10 +138,15 @@ export default function DevicesPage() {
     if (!selectedGroup) return;
 
     try {
-      await apiService.updateDeviceGroup(selectedGroup.id, newGroup);
+      await apiService.updateDeviceGroup(selectedGroup.id, {
+        ...newGroup,
+        icon: iconFile || undefined,
+      });
       setEditGroupDialog(false);
       setSelectedGroup(null);
       setNewGroup({ name: '', description: '' });
+      setIconFile(null);
+      setIconPreview('');
       enqueueSnackbar('设备组更新成功', { variant: 'success' });
       fetchDeviceGroups();
     } catch (err) {
@@ -144,6 +154,20 @@ export default function DevicesPage() {
       enqueueSnackbar('更新设备组失败', { variant: 'error' });
     }
   };
+
+  // 处理编辑对话框打开时的图标预览
+  useEffect(() => {
+    if (editGroupDialog && selectedGroup) {
+      setNewGroup({
+        name: selectedGroup.name,
+        description: selectedGroup.description || '',
+      });
+      setIconPreview(
+        selectedGroup.icon_url ? `${API_BASE_URL.replace('/api', '')}${selectedGroup.icon_url}` : ''
+      );
+      setIconFile(null);
+    }
+  }, [editGroupDialog, selectedGroup]);
 
   const handleAddDevice = async () => {
     try {
@@ -318,7 +342,25 @@ export default function DevicesPage() {
             <Tab label="所有设备" />
             <Tab label="未分组" />
             {deviceGroups.map((group, index) => (
-              <Tab key={group.id} label={`${group.name} `} />
+              <Tab
+                key={group.id}
+                label={
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    {group.icon_url && (
+                      <Box
+                        component="img"
+                        src={`${API_BASE_URL.replace('/api', '')}${group.icon_url}`}
+                        alt={group.name}
+                        sx={{
+                          width: 16,
+                          height: 16,
+                        }}
+                      />
+                    )}
+                    {group.name}
+                  </Box>
+                }
+              />
             ))}
           </Tabs>
         </Box>
@@ -642,10 +684,71 @@ export default function DevicesPage() {
                 multiline
                 rows={3}
               />
+
+              {/* 图标上传 */}
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  图标上传 (仅支持SVG格式)
+                </Typography>
+                <input
+                  accept=".svg"
+                  style={{ display: 'none' }}
+                  id="icon-upload-add"
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.type !== 'image/svg+xml') {
+                        enqueueSnackbar('请选择SVG格式的文件', { variant: 'error' });
+                        return;
+                      }
+                      setIconFile(file);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setIconPreview(event.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <label htmlFor="icon-upload-add">
+                  <Button variant="outlined" component="span" startIcon={<AddIcon />}>
+                    选择图标
+                  </Button>
+                </label>
+
+                {iconPreview && (
+                  <Box mt={2}>
+                    <Typography variant="caption" display="block" gutterBottom>
+                      图标预览:
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={iconPreview}
+                      alt="图标预览"
+                      sx={{
+                        maxWidth: 100,
+                        maxHeight: 100,
+                        border: '1px solid #ddd',
+                        borderRadius: 1,
+                        p: 1,
+                      }}
+                    />
+                  </Box>
+                )}
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setAddGroupDialog(false)}>取消</Button>
+            <Button
+              onClick={() => {
+                setAddGroupDialog(false);
+                setIconFile(null);
+                setIconPreview('');
+              }}
+            >
+              取消
+            </Button>
             <Button onClick={handleAddGroup} variant="contained" disabled={!newGroup.name}>
               添加
             </Button>
@@ -675,10 +778,91 @@ export default function DevicesPage() {
                 multiline
                 rows={3}
               />
+
+              {/* 图标上传 */}
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  图标上传 (仅支持SVG格式)
+                </Typography>
+                <input
+                  accept=".svg"
+                  style={{ display: 'none' }}
+                  id="icon-upload-edit"
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.type !== 'image/svg+xml') {
+                        enqueueSnackbar('请选择SVG格式的文件', { variant: 'error' });
+                        return;
+                      }
+                      setIconFile(file);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setIconPreview(event.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <label htmlFor="icon-upload-edit">
+                  <Button variant="outlined" component="span" startIcon={<AddIcon />}>
+                    选择图标
+                  </Button>
+                </label>
+
+                {iconPreview && (
+                  <Box mt={2}>
+                    <Typography variant="caption" display="block" gutterBottom>
+                      图标预览:
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={iconPreview}
+                      alt="图标预览"
+                      sx={{
+                        maxWidth: 100,
+                        maxHeight: 100,
+                        border: '1px solid #ddd',
+                        borderRadius: 1,
+                        p: 1,
+                      }}
+                    />
+                  </Box>
+                )}
+
+                {selectedGroup?.icon_url && !iconPreview && (
+                  <Box mt={2}>
+                    <Typography variant="caption" display="block" gutterBottom>
+                      当前图标:
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={`${API_BASE_URL.replace('/api', '')}${selectedGroup.icon_url}`}
+                      alt="当前图标"
+                      sx={{
+                        maxWidth: 100,
+                        maxHeight: 100,
+                        border: '1px solid #ddd',
+                        borderRadius: 1,
+                        p: 1,
+                      }}
+                    />
+                  </Box>
+                )}
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setEditGroupDialog(false)}>取消</Button>
+            <Button
+              onClick={() => {
+                setEditGroupDialog(false);
+                setIconFile(null);
+                setIconPreview('');
+              }}
+            >
+              取消
+            </Button>
             <Button onClick={handleEditGroup} variant="contained" disabled={!newGroup.name}>
               保存
             </Button>
