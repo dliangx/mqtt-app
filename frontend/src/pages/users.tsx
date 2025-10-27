@@ -172,7 +172,6 @@ export default function UsersPage() {
                           px: 1,
                           py: 0.5,
                           borderRadius: 1,
-                          bgcolor: user.role === 'admin' ? 'primary.main' : 'grey.300',
                           color: user.role === 'admin' ? 'primary.contrastText' : 'text.primary',
                           fontSize: '0.75rem',
                           fontWeight: 'medium',

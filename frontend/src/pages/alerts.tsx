@@ -107,17 +107,6 @@ export default function AlertsPage() {
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await apiService.markAllAlertsAsRead();
-      enqueueSnackbar('所有消息已标记为已读', { variant: 'success' });
-      fetchUnreadAlerts();
-    } catch (err) {
-      console.error('Failed to mark alerts as read:', err);
-      enqueueSnackbar('标记消息为已读失败', { variant: 'error' });
-    }
-  };
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -141,15 +130,6 @@ export default function AlertsPage() {
             />
           </Box>
           <Box display="flex" gap={1}>
-            {unreadAlerts > 0 && (
-              <Chip
-                label="标记所有为已读"
-                color="primary"
-                variant="outlined"
-                onClick={handleMarkAllAsRead}
-                clickable
-              />
-            )}
             <IconButton onClick={fetchData} size="large">
               <RefreshIcon />
             </IconButton>
