@@ -518,7 +518,6 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
         const validDevices = devices.filter(
           (device) => isValidLongitude(device.longitude) && isValidLatitude(device.latitude)
         );
-
         if (validDevices.length === 0) return;
 
         const markers: any[] = [];
@@ -785,8 +784,32 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
     };
 
     const createMarkerContent = (device: Device): string => {
+      console.log(device);
       const color = getStatusColor(device.status);
 
+      // 如果有设备组图标，使用图标
+      if (device.device_group?.icon_url) {
+        return `
+        <div style="
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          // border: 2px solid ${color};
+          // box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          // background-color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        ">
+          <img src="${device.device_group.icon_url}"
+               alt="${device.device_group.name}"
+               style="width: 20px; height: 20px; object-fit: contain;" />
+        </div>
+      `;
+      }
+
+      // 如果没有图标，使用原来的样式
       return `
       <div style="
         background-color: ${color};
@@ -1113,20 +1136,46 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           if (device.longitude && device.latitude) {
             // 创建标记元素
             const el = document.createElement('div');
-            el.className = 'mapbox-marker';
-            el.style.width = '18px';
-            el.style.height = '18px';
-            el.style.borderRadius = '50%';
-            el.style.backgroundColor = getStatusColor(device.status);
-            el.style.border = '3px solid white';
-            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-            el.style.cursor = 'pointer';
-            el.style.display = 'flex';
-            el.style.alignItems = 'center';
-            el.style.justifyContent = 'center';
-            el.style.fontSize = '10px';
-            el.style.fontWeight = 'bold';
-            el.style.color = 'white';
+            // el.className = 'mapbox-marker';
+
+            // 如果有设备组图标，使用图标
+            if (device.device_group?.icon_url) {
+              el.style.width = '24px';
+              el.style.height = '24px';
+              el.style.borderRadius = '50%';
+              el.style.cursor = 'pointer';
+              el.style.display = 'flex';
+              el.style.alignItems = 'center';
+              el.style.justifyContent = 'center';
+              // el.style.backgroundColor = 'white';
+              el.style.overflow = 'hidden';
+
+              const img = document.createElement('img');
+              img.src = device.device_group.icon_url;
+              img.alt = device.device_group.name;
+              img.style.width = '20px';
+              img.style.height = '20px';
+              img.style.objectFit = 'contain';
+              el.appendChild(img);
+            } else {
+              // 如果没有图标，使用原来的样式
+              el.style.width = '18px';
+              el.style.height = '18px';
+              el.style.borderRadius = '50%';
+              el.style.backgroundColor = getStatusColor(device.status);
+              el.style.border = '3px solid white';
+              el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+              el.style.cursor = 'pointer';
+              el.style.display = 'flex';
+              el.style.alignItems = 'center';
+              el.style.justifyContent = 'center';
+              el.style.fontSize = '10px';
+              el.style.fontWeight = 'bold';
+              el.style.color = 'white';
+
+              const text = document.createTextNode(device.name.charAt(0).toUpperCase());
+              el.appendChild(text);
+            }
 
             // 添加点击事件
             el.addEventListener('click', (e) => {

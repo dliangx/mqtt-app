@@ -27,6 +27,8 @@ export default function MapMonitorPage() {
         name: device.name,
         topic: device.topic,
         user_id: device.user_id,
+        group_id: device.group_id ? Number(device.group_id) : undefined,
+        device_group: device.device_group,
         longitude: device.longitude,
         latitude: device.latitude,
         address: device.address,
