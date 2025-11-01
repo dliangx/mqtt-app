@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
 import type { Device, DeviceGroup } from 'src/types';
 
-import { API_BASE_URL, apiService } from 'src/services/api';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import {
   Add as AddIcon,
@@ -39,6 +37,7 @@ import {
 } from '@mui/material';
 
 import { CONFIG } from 'src/config-global';
+import { API_BASE_URL, apiService } from 'src/services/api';
 
 import { useSnackbar } from 'src/components/snackbar';
 
@@ -81,7 +80,16 @@ export default function DevicesPage() {
   const fetchDeviceGroups = useCallback(async () => {
     try {
       const response = await apiService.getDeviceGroups();
-      setDeviceGroups(Array.isArray(response) ? response : []);
+      const groupsData = Array.isArray(response) ? response : [];
+      const transformedGroups = groupsData.map((group) => ({
+        id: group.ID || group.id,
+        name: group.name,
+        description: group.description,
+        icon_url: group.icon_url,
+        created_at: group.CreatedAt || group.created_at,
+        updated_at: group.UpdatedAt || group.updated_at,
+      }));
+      setDeviceGroups(transformedGroups);
     } catch (err) {
       console.error('Failed to fetch device groups:', err);
       enqueueSnackbar('获取设备组列表失败', { variant: 'error' });
@@ -99,7 +107,7 @@ export default function DevicesPage() {
         name: device.name,
         topic: device.topic,
         user_id: device.user_id,
-        group_id: device.group_id,
+        group_id: device.group_id ? Number(device.group_id) : undefined,
         device_group: device.device_group,
         longitude: device.longitude,
         latitude: device.latitude,
@@ -506,13 +514,18 @@ export default function DevicesPage() {
               <TextField
                 select
                 label="设备组"
-                value={newDevice.group_id || ''}
-                onChange={(e) =>
+                value={
+                  newDevice.group_id === undefined || newDevice.group_id === null
+                    ? ''
+                    : newDevice.group_id
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
                   setNewDevice({
                     ...newDevice,
-                    group_id: e.target.value ? parseInt(e.target.value) : undefined,
-                  })
-                }
+                    group_id: value === '' || value === undefined ? undefined : parseInt(value),
+                  });
+                }}
               >
                 <MenuItem value="">未分组</MenuItem>
                 {deviceGroups.map((group) => (
@@ -594,13 +607,18 @@ export default function DevicesPage() {
               <TextField
                 select
                 label="设备组"
-                value={newDevice.group_id || ''}
-                onChange={(e) =>
+                value={
+                  newDevice.group_id === undefined || newDevice.group_id === null
+                    ? ''
+                    : newDevice.group_id
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
                   setNewDevice({
                     ...newDevice,
-                    group_id: e.target.value ? parseInt(e.target.value) : undefined,
-                  })
-                }
+                    group_id: value === '' || value === undefined ? undefined : parseInt(value),
+                  });
+                }}
               >
                 <MenuItem value="">未分组</MenuItem>
                 {deviceGroups.map((group) => (
