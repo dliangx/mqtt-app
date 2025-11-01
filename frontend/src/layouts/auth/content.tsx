@@ -13,7 +13,6 @@ export type AuthContentProps = BoxProps;
 export function AuthContent({ sx, children, className, ...other }: AuthContentProps) {
   return (
     <Box
-      className={mergeClasses([layoutClasses.content, className])}
       sx={[
         (theme) => ({
           py: 5,
@@ -24,7 +23,6 @@ export function AuthContent({ sx, children, className, ...other }: AuthContentPr
           display: 'flex',
           flexDirection: 'column',
           maxWidth: 'var(--layout-auth-content-width)',
-          bgcolor: theme.vars.palette.background.default,
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
