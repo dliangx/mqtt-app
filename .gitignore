@@ -85,6 +85,7 @@ logs
 
 # Frontend build artifacts
 backend/frontend/
+backend/uploads/
 
 # Go workspace files
 go.work
