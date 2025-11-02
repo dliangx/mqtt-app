@@ -13,6 +13,7 @@ export interface Device {
   topic: string;
   user_id: number;
   group_id?: number;
+  device_group?: DeviceGroup;
   longitude: number;
   latitude: number;
   address: string;

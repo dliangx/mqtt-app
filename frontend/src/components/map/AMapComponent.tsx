@@ -38,6 +38,7 @@ import type { Alert, Device } from 'src/types';
 import type { Geofence, GeofenceViolation } from 'src/utils/geofence';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from 'src/services/api';
 
 import { useFullscreen } from 'src/hooks/use-fullscreen';
 
@@ -802,7 +803,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
           justify-content: center;
           overflow: hidden;
         ">
-          <img src="${device.device_group.icon_url}"
+          <img src="${API_BASE_URL}${device.device_group.icon_url}"
                alt="${device.device_group.name}"
                style="width: 20px; height: 20px; object-fit: contain;" />
         </div>
@@ -1151,7 +1152,7 @@ const AMapComponent = React.forwardRef<any, AMapComponentProps>(
               el.style.overflow = 'hidden';
 
               const img = document.createElement('img');
-              img.src = device.device_group.icon_url;
+              img.src = `${API_BASE_URL}${device.device_group.icon_url}`;
               img.alt = device.device_group.name;
               img.style.width = '20px';
               img.style.height = '20px';

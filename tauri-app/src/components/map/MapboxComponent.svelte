@@ -7,6 +7,8 @@
     export let onMarkerClick = () => {};
     export let height = "400px";
     export let accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    const IMG_BASE_URL =
+        import.meta.env.VITE_IMG_BASE_URL || "http://localhost:8080";
 
     // 路线导航相关状态
     let currentLocation = null;
@@ -543,28 +545,73 @@
                     ]);
                     const el = existingMarker.getElement();
                     if (el) {
-                        el.style.backgroundColor = getStatusColor(
-                            device.status,
-                        );
+                        // 如果有设备组图标，更新图标和边框颜色
+                        if (device.device_group?.icon_url) {
+                            el.style.borderColor = getStatusColor(
+                                device.status,
+                            );
+                            // 如果有图片，更新图片源
+                            const img = el.querySelector("img");
+                            if (img) {
+                                img.src = `${IMG_BASE_URL}${device.device_group.icon_url}`;
+                                img.alt = device.device_group.name;
+                            }
+                        } else {
+                            el.style.backgroundColor = getStatusColor(
+                                device.status,
+                            );
+                        }
                     }
                     markers.push(existingMarker);
                 } else {
                     // 创建新标记
                     const el = document.createElement("div");
                     el.className = "device-marker";
-                    el.style.width = "16px";
-                    el.style.height = "16px";
-                    el.style.borderRadius = "50%";
-                    el.style.backgroundColor = getStatusColor(device.status);
-                    el.style.border = "3px solid white";
-                    el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
-                    el.style.cursor = "pointer";
-                    el.style.display = "flex";
-                    el.style.alignItems = "center";
-                    el.style.justifyContent = "center";
-                    el.style.fontSize = "10px";
-                    el.style.fontWeight = "bold";
-                    el.style.color = "white";
+
+                    // 如果有设备组图标，使用图标
+                    if (device.device_group?.icon_url) {
+                        el.style.width = "26px";
+                        el.style.height = "26px";
+                        el.style.borderRadius = "50%";
+                        // el.style.border = `3px solid ${getStatusColor(device.status)}`;
+                        // el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+                        el.style.cursor = "pointer";
+                        el.style.display = "flex";
+                        el.style.alignItems = "center";
+                        el.style.justifyContent = "center";
+                        // el.style.backgroundColor = "white";
+                        el.style.overflow = "hidden";
+
+                        const img = document.createElement("img");
+                        img.src = `${IMG_BASE_URL}${device.device_group.icon_url}`;
+                        img.alt = device.device_group.name;
+                        img.style.width = "20px";
+                        img.style.height = "20px";
+                        img.style.objectFit = "contain";
+                        el.appendChild(img);
+                    } else {
+                        // 如果没有图标，使用原来的样式
+                        el.style.width = "16px";
+                        el.style.height = "16px";
+                        el.style.borderRadius = "50%";
+                        el.style.backgroundColor = getStatusColor(
+                            device.status,
+                        );
+                        el.style.border = "3px solid white";
+                        el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+                        el.style.cursor = "pointer";
+                        el.style.display = "flex";
+                        el.style.alignItems = "center";
+                        el.style.justifyContent = "center";
+                        el.style.fontSize = "10px";
+                        el.style.fontWeight = "bold";
+                        el.style.color = "white";
+
+                        const text = document.createTextNode(
+                            device.name.charAt(0).toUpperCase(),
+                        );
+                        el.appendChild(text);
+                    }
 
                     // 添加点击事件
                     el.addEventListener("click", (e) => {
