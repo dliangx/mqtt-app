@@ -402,6 +402,38 @@ func createZyDataAlert(msgID string, contentData *ContentData, rawContent string
 		fmt.Printf("Failed to convert deviceID '%s' to uint, using default ID 1\n", deviceID)
 	}
 
+	// 检查device中有没有对应DeviceID的设备
+	var device models.Device
+	result := database.DB.Where("id = ?", uint(deviceIDUint)).First(&device)
+	if result.Error != nil {
+		// 设备不存在，创建新设备
+		device = models.Device{
+			Name:      fmt.Sprintf("设备_%s", msgID),
+			Topic:     fmt.Sprintf("device/%s", msgID),
+			UserID:    1, // 默认用户ID
+			Longitude: contentData.Longitude,
+			Latitude:  contentData.Latitude,
+			Status:    "online",
+			LastSeen:  time.Now().Unix(),
+		}
+		if err := database.DB.Create(&device).Error; err != nil {
+			fmt.Printf("Failed to create device: %v\n", err)
+			return
+		}
+		fmt.Printf("Created new device: %s (ID: %d)\n", device.Name, device.ID)
+	} else {
+		// 设备存在，更新坐标和时间
+		device.Longitude = contentData.Longitude
+		device.Latitude = contentData.Latitude
+		device.Status = "online"
+		device.LastSeen = time.Now().Unix()
+		if err := database.DB.Save(&device).Error; err != nil {
+			fmt.Printf("Failed to update device: %v\n", err)
+			return
+		}
+		fmt.Printf("Updated device: %s (ID: %d)\n", device.Name, device.ID)
+	}
+
 	alert := models.Alert{
 		DeviceID:  uint(deviceIDUint),
 		Type:      "99",
@@ -415,7 +447,7 @@ func createZyDataAlert(msgID string, contentData *ContentData, rawContent string
 			contentData.Altitude, contentData.SNR, contentData.Temperature, contentData.Voltage),
 	}
 
-	result := database.DB.Create(&alert)
+	result = database.DB.Create(&alert)
 	if result.Error != nil {
 		fmt.Printf("Failed to create alert: %v\n", result.Error)
 	} else {
