@@ -96,17 +96,7 @@
   font-size: 32rpx;
 }
 
-/* 测试模式指示器 */
-.test-mode-indicator {
-  background: #fff3e0;
-  color: #f57c00;
-  border: 2rpx solid #ffe0b2;
-  border-radius: 8rpx;
-  padding: 16rpx 20rpx;
-  margin-bottom: 30rpx;
-  font-size: 26rpx;
-  text-align: center;
-}
+
 
 /* 消息列表 */
 .alerts-list {
@@ -115,6 +105,7 @@
   border-radius: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
   padding: 20rpx;
+  box-sizing: border-box;
 }
 
 .alert-card {

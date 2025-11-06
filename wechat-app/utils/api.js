@@ -35,10 +35,12 @@ const request = (options) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else {
+          console.error("请求失败:", res.data?.error);
           reject(new Error(res.data?.error || "请求失败"));
         }
       },
       fail: (err) => {
+        console.error("请求失败:", err);
         reject(err);
       },
     });

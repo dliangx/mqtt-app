@@ -1,4 +1,6 @@
 // pages/management/management.js
+const { request } = require("../../utils/api.js");
+
 Page({
   data: {
     devices: [],
@@ -42,8 +44,8 @@ Page({
   // 加载设备列表
   async loadDevices() {
     try {
-      const devices = await this.request({
-        url: "/api/devices",
+      const devices = await request({
+        url: "/devices",
         method: "GET",
       });
       this.setData({ devices });
@@ -55,8 +57,8 @@ Page({
   // 加载设备组
   async loadDeviceGroups() {
     try {
-      const deviceGroups = await this.request({
-        url: "/api/device-groups",
+      const deviceGroups = await request({
+        url: "/device-groups",
         method: "GET",
       });
       this.setData({ deviceGroups });
@@ -118,8 +120,8 @@ Page({
 
     this.setData({ loading: true });
     try {
-      const newDevice = await this.request({
-        url: "/api/devices",
+      const newDevice = await request({
+        url: "/devices",
         method: "POST",
         data: deviceData,
       });
@@ -156,8 +158,8 @@ Page({
 
     this.setData({ loading: true });
     try {
-      const updatedDevice = await this.request({
-        url: `/api/devices/${this.data.editingDevice.id}`,
+      const updatedDevice = await request({
+        url: `/devices/${this.data.editingDevice.id}`,
         method: "PUT",
         data: deviceData,
       });
@@ -190,8 +192,8 @@ Page({
         if (res.confirm) {
           this.setData({ loading: true });
           try {
-            await this.request({
-              url: `/api/devices/${deviceId}`,
+            await request({
+              url: `/devices/${deviceId}`,
               method: "DELETE",
             });
 
@@ -289,29 +291,5 @@ Page({
   // 清除成功消息
   clearSuccess() {
     this.setData({ success: "" });
-  },
-
-  // 阻止事件冒泡
-  stopPropagation() {
-    // 空函数，用于阻止事件冒泡
-  },
-
-  // 网络请求封装
-  async request(options) {
-    return new Promise((resolve, reject) => {
-      wx.request({
-        ...options,
-        success: (res) => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(res.data);
-          } else {
-            reject(new Error(res.data?.message || "请求失败"));
-          }
-        },
-        fail: (error) => {
-          reject(new Error("网络请求失败"));
-        },
-      });
-    });
   },
 });

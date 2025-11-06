@@ -19,10 +19,7 @@
     </button>
   </view>
 
-  <!-- 测试模式指示器 -->
-  <view wx:if="{{testMode}}" class="test-mode-indicator">
-    <text>测试模式：显示20条模拟消息数据</text>
-  </view>
+
 
   <!-- 消息列表 -->
   <scroll-view class="alerts-list" scroll-y>

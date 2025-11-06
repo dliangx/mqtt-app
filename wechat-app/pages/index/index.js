@@ -1,4 +1,6 @@
 // pages/monitor/monitor.js
+const { request } = require("../../utils/api.js");
+
 Page({
   data: {
     devices: [],
@@ -62,8 +64,8 @@ Page({
 
   async loadDevices() {
     try {
-      const devices = await this.request({
-        url: "/api/devices",
+      const devices = await request({
+        url: "/devices",
         method: "GET",
       });
 
@@ -97,8 +99,8 @@ Page({
 
   async loadAlerts() {
     try {
-      const alerts = await this.request({
-        url: "/api/alerts",
+      const alerts = await request({
+        url: "/alerts",
         method: "GET",
       });
 
@@ -306,30 +308,5 @@ Page({
   // 阻止事件冒泡
   stopPropagation() {
     // 空函数，用于阻止事件冒泡
-  },
-
-  // 网络请求封装
-  async request(options) {
-    return new Promise((resolve, reject) => {
-      const token = wx.getStorageSync("token");
-
-      wx.request({
-        ...options,
-        header: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        success: (res) => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(res.data);
-          } else {
-            reject(new Error(res.data?.message || "请求失败"));
-          }
-        },
-        fail: (error) => {
-          reject(new Error("网络请求失败"));
-        },
-      });
-    });
   },
 });
