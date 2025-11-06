@@ -1,11 +1,41 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/logs/logs"
+    "pages/messages/messages",
+    "pages/management/management",
+    "pages/login/login"
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationStyle": "custom"
+    "navigationStyle": "custom",
+    "navigationBarTitleText": "要友卫星",
+    "navigationBarBackgroundColor": "#1976d2"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1976d2",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/monitor.png",
+        "selectedIconPath": "images/monitor_selected.png"
+      },
+      {
+        "pagePath": "pages/management/management",
+        "text": "管理",
+        "iconPath": "images/management.png",
+        "selectedIconPath": "images/management_selected.png"
+      },
+      {
+        "pagePath": "pages/messages/messages",
+        "text": "消息",
+        "iconPath": "images/messages.png",
+        "selectedIconPath": "images/messages_selected.png"
+      }
+    ]
   },
   "style": "v2",
   "renderer": "skyline",

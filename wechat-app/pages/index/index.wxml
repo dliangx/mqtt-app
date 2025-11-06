@@ -1,28 +1,101 @@
-<!--index.wxml-->
-<navigation-bar title="Weixin" back="{{false}}" color="black" background="#FFF"></navigation-bar>
-<scroll-view class="scrollarea" scroll-y type="list">
-  <view class="container">
-    <view class="userinfo">
-      <block wx:if="{{canIUseNicknameComp && !hasUserInfo}}">
-        <button class="avatar-wrapper" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-          <image class="avatar" src="{{userInfo.avatarUrl}}"></image>
-        </button>
-        <view class="nickname-wrapper">
-          <text class="nickname-label">昵称</text>
-          <input type="nickname" class="nickname-input" placeholder="请输入昵称" bind:change="onInputChange" />
+<!--pages/monitor/monitor.wxml-->
+<view class="monitor-page">
+
+  <!-- 地图容器 -->
+  <view class="map-container">
+    <map
+      id="map"
+      longitude="{{currentLocation ? currentLocation.longitude : 116.3974}}"
+      latitude="{{currentLocation ? currentLocation.latitude : 39.9093}}"
+      scale="14"
+      markers="{{markers}}"
+      bindmarkertap="handleMarkerClick"
+      show-location
+      style="width: 100%; height: 100%;"
+    >
+    </map>
+  </view>
+
+
+
+
+
+  <!-- 设备详情对话框 -->
+  <view wx:if="{{dialogOpen && selectedDevice}}" class="dialog-overlay" bindtap="handleCloseDialog">
+    <view class="dialog" catchtap="stopPropagation">
+      <view class="dialog-header">
+        <text class="dialog-title">设备详情 - {{selectedDevice.name}}</text>
+        <button class="close-btn" bindtap="handleCloseDialog">×</button>
+      </view>
+
+      <view class="dialog-content">
+        <view class="device-detail">
+          <view class="detail-row">
+            <text class="detail-label">设备名称:</text>
+            <text class="detail-value">{{selectedDevice.name}}</text>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">设备状态:</text>
+            <view class="status-badge {{selectedDevice.status}}">
+              <text>{{getStatusText(selectedDevice.status)}}</text>
+            </view>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">设备主题:</text>
+            <text class="detail-value">{{selectedDevice.topic || '未设置'}}</text>
+          </view>
+          <view wx:if="{{selectedDevice.longitude && selectedDevice.latitude}}" class="detail-row">
+            <text class="detail-label">位置坐标:</text>
+            <text class="detail-value">
+              {{selectedDevice.longitude.toFixed(6)}}, {{selectedDevice.latitude.toFixed(6)}}
+            </text>
+          </view>
+          <view wx:if="{{selectedDevice.address}}" class="detail-row">
+            <text class="detail-label">地址:</text>
+            <text class="detail-value">{{selectedDevice.address}}</text>
+          </view>
+          <view wx:if="{{currentLocation}}" class="detail-row">
+            <text class="detail-label">当前位置来源:</text>
+            <text class="detail-value">
+              {{currentLocation.source === 'browser' ? '浏览器定位' :
+                currentLocation.source === 'ip' ? 'IP定位' :
+                currentLocation.source === 'tauri-geolocation' ? '设备GPS定位' :
+                currentLocation.source}}
+
+            </text>
+          </view>
         </view>
-      </block>
-      <block wx:elif="{{!hasUserInfo}}">
-        <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 获取头像昵称 </button>
-        <view wx:else> 请使用2.10.4及以上版本基础库 </view>
-      </block>
-      <block wx:else>
-        <image bindtap="bindViewTap" class="userinfo-avatar" src="{{userInfo.avatarUrl}}" mode="cover"></image>
-        <text class="userinfo-nickname">{{userInfo.nickName}}</text>
-      </block>
-    </view>
-    <view class="usermotto">
-      <text class="user-motto">{{motto}}</text>
+
+        <view class="dialog-actions">
+          <button
+            class="action-btn primary"
+            bindtap="navigateToDevice"
+            disabled="{{isNavigating || !selectedDevice.longitude || !selectedDevice.latitude}}"
+          >
+            <text wx:if="{{isNavigating}}">正在计算路线...</text>
+            <text wx:else>开始导航</text>
+          </button>
+          <button
+            class="action-btn secondary"
+            bindtap="showHistoryTrail"
+          >
+            <text>{{isShowingHistory ? '清除轨迹' : '查看历史轨迹'}}</text>
+          </button>
+        </view>
+      </view>
     </view>
   </view>
-</scroll-view>
+
+  <!-- 提示消息 -->
+  <view wx:if="{{alertOpen}}" class="alert-snackbar {{alertType}}">
+    <text class="alert-message">{{alertMessage}}</text>
+    <button class="alert-close" bindtap="handleCloseAlert">×</button>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-overlay">
+    <view class="loading-spinner">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>

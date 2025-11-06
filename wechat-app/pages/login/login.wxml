@@ -1,0 +1,106 @@
+<!--pages/login/login.wxml-->
+<view class="login-page">
+  <view class="login-container">
+    <view class="login-form">
+      <view class="header">
+        <text class="title">要友卫星</text>
+      </view>
+
+      <view class="tabs">
+        <view class="tab-header">
+          <view
+            class="tab-button {{tab === 0 ? 'active' : ''}}"
+            data-tab="0"
+            bindtap="handleTabChange"
+          >
+            <text>登录</text>
+          </view>
+          <view
+            class="tab-button {{tab === 1 ? 'active' : ''}}"
+            data-tab="1"
+            bindtap="handleTabChange"
+          >
+            <text>注册</text>
+          </view>
+        </view>
+
+        <form bindsubmit="handleSubmit">
+          <!-- 错误提示 -->
+          <view wx:if="{{error}}" class="alert error">
+            <text>{{error}}</text>
+          </view>
+
+          <!-- 成功提示 -->
+          <view wx:if="{{successMessage}}" class="alert success">
+            <text>{{successMessage}}</text>
+          </view>
+
+          <!-- 用户名输入 -->
+          <view class="form-group">
+            <label for="username">用户名</label>
+            <input
+              id="username"
+              type="text"
+              value="{{username}}"
+              bindinput="onUsernameInput"
+              placeholder="请输入用户名"
+              disabled="{{loading}}"
+            />
+
+          </view>
+
+          <!-- 邮箱输入（注册时显示） -->
+          <view wx:if="{{tab === 1}}" class="form-group">
+            <label for="email">邮箱</label>
+            <input
+              id="email"
+              type="email"
+              value="{{email}}"
+              bindinput="onEmailInput"
+              placeholder="请输入邮箱"
+              disabled="{{loading}}"
+            />
+
+          </view>
+
+          <!-- 密码输入 -->
+          <view class="form-group">
+            <label for="password">密码</label>
+            <input
+              id="password"
+              type="password"
+              value="{{password}}"
+              bindinput="onPasswordInput"
+              placeholder="请输入密码"
+              disabled="{{loading}}"
+            />
+
+          </view>
+
+          <!-- 提交按钮 -->
+          <button
+            formType="submit"
+            class="submit-btn"
+            disabled="{{loading}}"
+          >
+            <view wx:if="{{loading}}" class="loading-spinner">⏳</view>
+            <text wx:if="{{!loading && tab === 0}}">登录</text>
+            <text wx:if="{{!loading && tab === 1}}">注册</text>
+          </button>
+        </form>
+
+        <!-- 切换标签 -->
+        <view class="switch-tab">
+          <text wx:if="{{tab === 0}}">
+            没有账号？
+            <text class="link-btn" bindtap="switchTab">点击注册</text>
+          </text>
+          <text wx:if="{{tab === 1}}">
+            已有账号？
+            <text class="link-btn" bindtap="switchTab">点击登录</text>
+          </text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

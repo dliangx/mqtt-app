@@ -1,52 +1,335 @@
-// index.js
-const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
-
-Component({
+// pages/monitor/monitor.js
+Page({
   data: {
-    motto: 'Hello World',
-    userInfo: {
-      avatarUrl: defaultAvatarUrl,
-      nickName: '',
-    },
-    hasUserInfo: false,
-    canIUseGetUserProfile: wx.canIUse('getUserProfile'),
-    canIUseNicknameComp: wx.canIUse('input.type.nickname'),
+    devices: [],
+    alerts: [],
+    loading: true,
+    selectedDevice: null,
+    dialogOpen: false,
+    alertOpen: false,
+    alertMessage: "",
+    alertType: "info",
+    isNavigating: false,
+    isShowingHistory: false,
+    currentLocation: null,
+    markers: [],
+    unreadAlertsCount: 0,
+    criticalAlertsCount: 0,
+    highAlertsCount: 0,
+    mediumAlertsCount: 0,
+    lowAlertsCount: 0,
   },
-  methods: {
-    // 事件处理函数
-    bindViewTap() {
-      wx.navigateTo({
-        url: '../logs/logs'
-      })
-    },
-    onChooseAvatar(e) {
-      const { avatarUrl } = e.detail
-      const { nickName } = this.data.userInfo
+
+  onLoad() {
+    this.checkAuth();
+    this.loadData();
+    this.getCurrentLocation();
+  },
+
+  onShow() {
+    this.checkAuth();
+  },
+
+  // 显示错误消息
+  showError(message) {
+    wx.showToast({
+      title: message,
+      icon: "error",
+      duration: 3000,
+    });
+  },
+
+  checkAuth() {
+    const token = wx.getStorageSync("token");
+    if (!token) {
+      wx.redirectTo({
+        url: "/pages/login/login",
+      });
+    }
+  },
+
+  async loadData() {
+    this.setData({ loading: true });
+    try {
+      await Promise.all([this.loadDevices(), this.loadAlerts()]);
+    } catch (error) {
+      console.error("加载数据失败:", error);
+      this.showError("加载数据失败", "error");
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
+
+  async loadDevices() {
+    try {
+      const devices = await this.request({
+        url: "/api/devices",
+        method: "GET",
+      });
+
+      // 创建地图标记
+      const markers = devices
+        .filter((device) => device.longitude && device.latitude)
+        .map((device) => ({
+          id: device.id,
+          latitude: device.latitude,
+          longitude: device.longitude,
+          title: device.name,
+          iconPath: this.getMarkerIcon(device.status),
+          width: 30,
+          height: 30,
+          callout: {
+            content: device.name,
+            color: "#333",
+            fontSize: 14,
+            borderRadius: 4,
+            bgColor: "#fff",
+            padding: 8,
+            display: "ALWAYS",
+          },
+        }));
+
+      this.setData({ devices, markers });
+    } catch (error) {
+      throw new Error("设备列表加载失败");
+    }
+  },
+
+  async loadAlerts() {
+    try {
+      const alerts = await this.request({
+        url: "/api/alerts",
+        method: "GET",
+      });
+
+      // 计算各种统计
+      const unreadAlertsCount = alerts.filter((alert) => !alert.read).length;
+      const criticalAlertsCount = alerts.filter(
+        (alert) => alert.level === "critical",
+      ).length;
+      const highAlertsCount = alerts.filter(
+        (alert) => alert.level === "high",
+      ).length;
+      const mediumAlertsCount = alerts.filter(
+        (alert) => alert.level === "medium",
+      ).length;
+      const lowAlertsCount = alerts.filter(
+        (alert) => alert.level === "low",
+      ).length;
+
       this.setData({
-        "userInfo.avatarUrl": avatarUrl,
-        hasUserInfo: nickName && avatarUrl && avatarUrl !== defaultAvatarUrl,
-      })
-    },
-    onInputChange(e) {
-      const nickName = e.detail.value
-      const { avatarUrl } = this.data.userInfo
+        alerts,
+        unreadAlertsCount,
+        criticalAlertsCount,
+        highAlertsCount,
+        mediumAlertsCount,
+        lowAlertsCount,
+      });
+    } catch (error) {
+      throw new Error("报警数据加载失败");
+    }
+  },
+
+  // 获取当前位置
+  getCurrentLocation() {
+    wx.getLocation({
+      type: "gcj02",
+      success: (res) => {
+        this.setData({
+          currentLocation: {
+            latitude: res.latitude,
+            longitude: res.longitude,
+            source: "browser",
+          },
+        });
+      },
+      fail: (error) => {
+        console.error("获取位置失败:", error);
+        // 使用默认位置（北京）
+        this.setData({
+          currentLocation: {
+            latitude: 39.9093,
+            longitude: 116.3974,
+            source: "default",
+          },
+        });
+      },
+    });
+  },
+
+  // 处理地图标记点击
+  handleMarkerClick(e) {
+    const deviceId = e.markerId || e.currentTarget.dataset.device?.id;
+    const device =
+      this.data.devices.find((d) => d.id === deviceId) ||
+      e.currentTarget.dataset.device;
+
+    if (device) {
       this.setData({
-        "userInfo.nickName": nickName,
-        hasUserInfo: nickName && avatarUrl && avatarUrl !== defaultAvatarUrl,
-      })
-    },
-    getUserProfile(e) {
-      // 推荐使用wx.getUserProfile获取用户信息，开发者每次通过该接口获取用户个人信息均需用户确认，开发者妥善保管用户快速填写的头像昵称，避免重复弹窗
-      wx.getUserProfile({
-        desc: '展示用户信息', // 声明获取用户个人信息后的用途，后续会展示在弹窗中，请谨慎填写
+        selectedDevice: device,
+        dialogOpen: true,
+      });
+    }
+  },
+
+  // 关闭对话框
+  handleCloseDialog() {
+    this.setData({
+      dialogOpen: false,
+      selectedDevice: null,
+    });
+  },
+
+  // 关闭提示
+  handleCloseAlert() {
+    this.setData({
+      alertOpen: false,
+      alertMessage: "",
+    });
+  },
+
+  // 导航到设备
+  navigateToDevice() {
+    const { selectedDevice, currentLocation } = this.data;
+
+    if (!selectedDevice.longitude || !selectedDevice.latitude) {
+      this.showError("该设备没有位置信息", "error");
+      return;
+    }
+
+    this.setData({ isNavigating: true });
+
+    // 使用微信内置地图打开导航
+    wx.openLocation({
+      latitude: selectedDevice.latitude,
+      longitude: selectedDevice.longitude,
+      name: selectedDevice.name,
+      address: selectedDevice.address || "设备位置",
+      scale: 18,
+      success: () => {
+        this.showError("正在导航到设备", "success");
+      },
+      fail: (error) => {
+        console.error("导航失败:", error);
+        this.showError("导航失败，请检查位置信息", "error");
+      },
+      complete: () => {
+        this.setData({ isNavigating: false });
+      },
+    });
+  },
+
+  // 显示历史轨迹
+  showHistoryTrail() {
+    const { selectedDevice, isShowingHistory } = this.data;
+
+    if (isShowingHistory) {
+      // 清除轨迹
+      this.setData({ isShowingHistory: false });
+      this.showError("已清除历史轨迹", "info");
+    } else {
+      // 显示轨迹
+      this.setData({ isShowingHistory: true });
+
+      // 获取设备的历史报警数据
+      const deviceAlerts = this.data.alerts.filter(
+        (alert) =>
+          alert.device_id === selectedDevice.id && alert.type === "track",
+      );
+
+      if (deviceAlerts.length === 0) {
+        this.showError("该设备暂无轨迹数据", "info");
+        return;
+      }
+
+      // 创建轨迹标记
+      const trailMarkers = deviceAlerts.map((alert, index) => {
+        const data = alert.parsed_data ? JSON.parse(alert.parsed_data) : {};
+        return {
+          id: `trail-${index}`,
+          latitude: data.latitude || selectedDevice.latitude,
+          longitude: data.longitude || selectedDevice.longitude,
+          title: `轨迹点 ${index + 1}`,
+          iconPath: "/images/trail-marker.png",
+          width: 20,
+          height: 20,
+        };
+      });
+
+      // 更新地图标记
+      const markers = [...this.data.markers, ...trailMarkers];
+      this.setData({ markers });
+
+      this.showError(`显示 ${deviceAlerts.length} 个轨迹点`, "success");
+    }
+  },
+
+  // 获取状态文本
+  getStatusText(status) {
+    const statusMap = {
+      online: "在线",
+      offline: "离线",
+      unknown: "未知",
+    };
+    return statusMap[status] || "未知";
+  },
+
+  // 获取标记图标
+  getMarkerIcon(status) {
+    const iconMap = {
+      online: "/images/marker-online.png",
+      offline: "/images/marker-offline.png",
+      unknown: "/images/marker-unknown.png",
+    };
+    return iconMap[status] || "/images/marker-unknown.png";
+  },
+
+  // 格式化时间戳
+  formatTimestamp(timestamp) {
+    if (!timestamp) return "从未在线";
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return "刚刚";
+    if (diffMins < 60) return `${diffMins}分钟前`;
+    if (diffHours < 24) return `${diffHours}小时前`;
+    if (diffDays < 7) return `${diffDays}天前`;
+
+    return date.toLocaleDateString();
+  },
+
+  // 阻止事件冒泡
+  stopPropagation() {
+    // 空函数，用于阻止事件冒泡
+  },
+
+  // 网络请求封装
+  async request(options) {
+    return new Promise((resolve, reject) => {
+      const token = wx.getStorageSync("token");
+
+      wx.request({
+        ...options,
+        header: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         success: (res) => {
-          console.log(res)
-          this.setData({
-            userInfo: res.userInfo,
-            hasUserInfo: true
-          })
-        }
-      })
-    },
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(res.data);
+          } else {
+            reject(new Error(res.data?.message || "请求失败"));
+          }
+        },
+        fail: (error) => {
+          reject(new Error("网络请求失败"));
+        },
+      });
+    });
   },
-})
+});

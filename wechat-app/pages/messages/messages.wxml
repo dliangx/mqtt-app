@@ -1,0 +1,161 @@
+<!--pages/messages/messages.wxml-->
+<view class="messages-page">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <view class="header-left">
+      <view class="unread-badge {{unreadCount > 0 ? 'has-unread' : ''}}">
+        <text>{{unreadCount}} 未读消息</text>
+      </view>
+    </view>
+    <text class="title">消息中心</text>
+
+  </view>
+
+  <!-- 发送消息按钮 -->
+  <view class="send-message-section">
+    <button class="send-message-btn" bindtap="openSendMessageDialog">
+      <text class="send-icon">📢</text>
+      <text>发送重要消息</text>
+    </button>
+  </view>
+
+  <!-- 测试模式指示器 -->
+  <view wx:if="{{testMode}}" class="test-mode-indicator">
+    <text>测试模式：显示20条模拟消息数据</text>
+  </view>
+
+  <!-- 消息列表 -->
+  <scroll-view class="alerts-list" scroll-y>
+    <view wx:for="{{displayAlerts}}" wx:key="id" class="alert-card {{item.read ? 'read' : ''}}" bindtap="showAlertDetail" data-alert="{{item}}">
+      <view class="alert-content">
+        <view class="alert-header">
+          <view class="device-info">
+            <text class="alert-icon">🔔</text>
+            <text class="device-name">{{getDeviceName(item)}}</text>
+          </view>
+          <view class="severity-badge" style="background-color: {{getSeverityColor(item.level)}}">
+            <text>{{getSeverityText(item.level)}}</text>
+          </view>
+        </view>
+
+        <text class="alert-message">{{item.message}}</text>
+
+        <view class="alert-footer">
+          <text class="timestamp">{{formatTimestamp(item.timestamp)}}</text>
+          <view wx:if="{{!item.read}}" class="alert-status">
+            <button class="mark-read-btn" bindtap="markAsRead" data-id="{{item.id}}" catchtap="stopPropagation">
+              <text>标记已读</text>
+            </button>
+          </view>
+          <view wx:else class="alert-status">
+            <text class="status-text read">已读</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{displayAlerts.length === 0 && !loading}}" class="empty-state">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无消息数据</text>
+    </view>
+  </scroll-view>
+
+  <!-- 消息详情模态框 -->
+  <view wx:if="{{showDetailModal && selectedAlert}}" class="modal-overlay" bindtap="closeDetailModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">消息详情</text>
+        <button class="close-btn" bindtap="closeDetailModal">×</button>
+      </view>
+
+      <view class="modal-body">
+        <view class="detail-section">
+          <text class="section-title">基本信息</text>
+          <view class="detail-grid">
+            <view class="detail-item">
+              <text class="detail-label">设备名称:</text>
+              <text class="detail-value">{{getDeviceName(selectedAlert)}}</text>
+            </view>
+            <view class="detail-item">
+              <text class="detail-label">严重程度:</text>
+              <view class="severity-badge" style="background-color: {{getSeverityColor(selectedAlert.level)}}">
+                <text>{{getSeverityText(selectedAlert.level)}}</text>
+              </view>
+            </view>
+            <view class="detail-item">
+              <text class="detail-label">消息内容:</text>
+              <text class="detail-value">{{selectedAlert.message}}</text>
+            </view>
+            <view class="detail-item">
+              <text class="detail-label">时间:</text>
+              <text class="detail-value">{{formatTimestamp(selectedAlert.timestamp)}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{selectedAlert.parsed_data}}" class="detail-section">
+          <text class="section-title">解析数据</text>
+          <view class="parsed-data-container">
+            <text class="parsed-data-content">{{selectedAlert.parsed_data}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="modal-actions">
+        <button class="action-btn secondary" bindtap="closeDetailModal">关闭</button>
+        <button wx:if="{{!selectedAlert.read}}" class="action-btn primary" bindtap="markAsRead" data-id="{{selectedAlert.id}}">
+          标记为已读
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发送消息对话框 -->
+  <view wx:if="{{showSendMessageDialog}}" class="modal-overlay" bindtap="closeSendMessageDialog">
+    <view class="modal-content send-message-dialog" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">发送重要消息</text>
+        <button class="close-btn" bindtap="closeSendMessageDialog">×</button>
+      </view>
+
+      <view class="modal-body">
+        <view class="form-group">
+          <textarea
+            class="message-textarea"
+            placeholder="请输入要发送的重要消息内容..."
+            value="{{messageContent}}"
+            bindinput="onMessageContentInput"
+            maxlength="500"
+            disabled="{{sendingMessage}}"
+          ></textarea>
+          <view class="char-count">{{messageContent.length}}/500</view>
+        </view>
+
+        <view wx:if="{{sendMessageError}}" class="error-message">
+          <text>{{sendMessageError}}</text>
+        </view>
+
+        <view wx:if="{{sendMessageSuccess}}" class="success-message">
+          <text>消息发送成功！</text>
+        </view>
+      </view>
+
+      <view class="modal-actions">
+        <button class="action-btn secondary" bindtap="closeSendMessageDialog" disabled="{{sendingMessage}}">
+          取消
+        </button>
+        <button class="action-btn primary" bindtap="sendImportantMessage" disabled="{{sendingMessage || !messageContent.trim()}}">
+          <text wx:if="{{sendingMessage}}">发送中...</text>
+          <text wx:else>发送</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-overlay">
+    <view class="loading-spinner">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>
