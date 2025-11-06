@@ -210,7 +210,7 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
                   onChange={handleSelectAllClick}
                 />
               </TableCell>
-              <TableCell>设备</TableCell>
+              <TableCell>设备ID</TableCell>
               <TableCell>报警类型</TableCell>
               <TableCell>消息</TableCell>
               <TableCell>等级</TableCell>
@@ -233,10 +233,11 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
                     <Checkbox
                       checked={isItemSelected}
                       onChange={(event) => handleCheckboxChange(event, alert.ID)}
+                      onClick={(event) => event.stopPropagation()}
                     />
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{`设备 ${alert.device_id}`}</Typography>
+                    <Typography variant="body2">{`${alert.device_id}`}</Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{alert.type}</Typography>
@@ -282,7 +283,7 @@ export default function AlertList({ alerts, onRefresh, onAlertClick }: AlertList
 
       {/* Pagination */}
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 100]}
         component="div"
         count={filteredAlerts.length}
         rowsPerPage={rowsPerPage}

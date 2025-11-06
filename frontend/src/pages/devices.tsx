@@ -378,6 +378,7 @@ export default function DevicesPage() {
             <Table stickyHeader aria-label="设备列表">
               <TableHead>
                 <TableRow>
+                  <TableCell>设备ID</TableCell>
                   <TableCell>设备名称</TableCell>
                   <TableCell>Topic</TableCell>
                   <TableCell>设备组</TableCell>
@@ -394,6 +395,9 @@ export default function DevicesPage() {
                     key={device.id}
                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                   >
+                    <TableCell component="th" scope="row">
+                      <Typography variant="subtitle2">{device.id}</Typography>
+                    </TableCell>
                     <TableCell component="th" scope="row">
                       <Typography variant="subtitle2">{device.name}</Typography>
                     </TableCell>
@@ -475,7 +479,7 @@ export default function DevicesPage() {
           )}
 
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[5, 10, 25, 100]}
             component="div"
             count={filteredDevices.length}
             rowsPerPage={rowsPerPage}
