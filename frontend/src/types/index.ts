@@ -79,6 +79,26 @@ export interface Alert {
   parsed_data?: string;
 }
 
+export interface TrackMessage {
+  ID: number;
+  device_id: number;
+  device_type: string;
+  type: string;
+  message: string;
+  level: 'critical' | 'high' | 'medium' | 'low';
+  read: boolean;
+  timestamp: number;
+  created_at: string;
+  updated_at: string;
+  raw_data?: string;
+  parsed_data?: string;
+  longitude?: number;
+  latitude?: number;
+  snr?: number;
+  temperature?: number;
+  voltage?: number;
+}
+
 export interface DeviceData {
   device_id: number;
   longitude: number;

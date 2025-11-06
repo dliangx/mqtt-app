@@ -1,4 +1,4 @@
-import type { Alert as AlertType } from 'src/types';
+import type { Alert as AlertType, TrackMessage } from 'src/types';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -13,6 +13,8 @@ import {
   Paper,
   Button,
   Dialog,
+  Tabs,
+  Tab,
   Typography,
   IconButton,
   DialogTitle,
@@ -29,13 +31,40 @@ import { apiService } from 'src/services/api';
 import { useSnackbar } from 'src/components/snackbar';
 
 import AlertList from '../components/alerts/AlertList';
+import TrackMessageList from '../components/alerts/TrackMessageList';
+
+// ----------------------------------------------------------------------
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`alert-tabpanel-${index}`}
+      aria-labelledby={`alert-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+    </div>
+  );
+}
 
 // ----------------------------------------------------------------------
 
 export default function AlertsPage() {
   const { enqueueSnackbar } = useSnackbar();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState(0);
   const [alerts, setAlerts] = useState<AlertType[]>([]);
+  const [trackMessages, setTrackMessages] = useState<TrackMessage[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<AlertType | null>(null);
@@ -44,7 +73,32 @@ export default function AlertsPage() {
   const fetchAlerts = useCallback(async () => {
     try {
       const response = await apiService.getAlerts();
-      setAlerts(Array.isArray(response) ? [...response] : []);
+      const allAlerts = Array.isArray(response) ? [...response] : [];
+      setAlerts(allAlerts);
+
+      // 过滤出报警类型为99的轨迹消息
+      const trackMessagesData = allAlerts
+        .filter((alert) => alert.type === '99')
+        .map((alert) => {
+          let parsedData = null;
+          try {
+            parsedData = alert.parsed_data ? JSON.parse(alert.parsed_data) : null;
+          } catch {
+            parsedData = null;
+          }
+
+          return {
+            ...alert,
+            device_type: parsedData?.device_type || '未知设备',
+            longitude: parsedData?.longitude,
+            latitude: parsedData?.latitude,
+            snr: parsedData?.snr,
+            temperature: parsedData?.temperature,
+            voltage: parsedData?.voltage,
+          } as TrackMessage;
+        });
+
+      setTrackMessages(trackMessagesData);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
       throw err;
@@ -76,6 +130,10 @@ export default function AlertsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
 
   const handleAlertClick = (alert: AlertType) => {
     setSelectedAlert(alert);
@@ -145,7 +203,18 @@ export default function AlertsPage() {
         </Box>
 
         <Paper sx={{ p: 2 }}>
-          <AlertList alerts={alerts} onRefresh={fetchData} onAlertClick={handleAlertClick} />
+          <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 2 }}>
+            <Tab label="全部" />
+            <Tab label="轨迹消息" />
+          </Tabs>
+
+          <TabPanel value={activeTab} index={0}>
+            <AlertList alerts={alerts} onRefresh={fetchData} onAlertClick={handleAlertClick} />
+          </TabPanel>
+
+          <TabPanel value={activeTab} index={1}>
+            <TrackMessageList trackMessages={trackMessages} onRefresh={fetchData} />
+          </TabPanel>
         </Paper>
       </Box>
 
