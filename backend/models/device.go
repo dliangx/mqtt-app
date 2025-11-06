@@ -40,6 +40,13 @@ type Alert struct {
 	ParsedData string `json:"parsed_data" gorm:"type:text"` // 解析后的数据
 }
 
+type MessageType struct {
+	gorm.Model
+	Type        string `gorm:"not null" json:"type"`
+	Name        string `gorm:"not null" json:"name"`
+	Description string `json:"description"`
+}
+
 // MessageTypeConfig 消息类型配置
 type MessageTypeConfig struct {
 	gorm.Model
