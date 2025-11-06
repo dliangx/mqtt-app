@@ -49,7 +49,7 @@
 
 /* 地图容器 */
 .map-container {
-  height: calc(100vh - 120rpx - env(safe-area-inset-top));
+  height: calc(100vh - env(safe-area-inset-top));
   background: transparent;
   overflow: hidden;
 }
