@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/liang/mqtt-app/backend/database"
 	"github.com/liang/mqtt-app/backend/models"
@@ -347,7 +349,7 @@ func HandleZyForwardData(c *gin.Context) {
 				fmt.Printf("Parsed content data: %+v\n", contentData)
 
 				// Create alert record with parsed content data
-				createZyDataAlert(data.MsgID, contentData, data.Content)
+				createZyDataAlert(data, contentData, data.Content)
 
 				response = ZyForwardDataResponse{
 					TotalLen: data.TotalLen,
@@ -374,7 +376,7 @@ func HandleZyForwardData(c *gin.Context) {
 				} else {
 					fmt.Printf("Parsed content data %d: %+v\n", i, contentData)
 					// Create alert record with parsed content data
-					createZyDataAlert(data.MsgID, contentData, content)
+					createZyDataAlert(data, contentData, content)
 					successCount++
 				}
 			}
@@ -390,9 +392,11 @@ func HandleZyForwardData(c *gin.Context) {
 }
 
 // createZyDataAlert creates an alert record for ZY data
-func createZyDataAlert(msgID string, contentData *ContentData, rawContent string) {
+
+// createZyDataAlert creates an alert record for ZY data
+func createZyDataAlert(data ZyForwardData, contentData *ContentData, rawContent string) {
 	// 使用默认设备ID 1，因为DeviceType可能不是有效的设备ID
-	deviceID := strings.Split(msgID, "_")[0]
+	deviceID := strings.Split(data.MsgID, "_")[0]
 
 	// 将deviceID字符串转换为整数
 	deviceIDUint, err := strconv.ParseUint(deviceID, 10, 32)
@@ -408,14 +412,17 @@ func createZyDataAlert(msgID string, contentData *ContentData, rawContent string
 	if result.Error != nil {
 		// 设备不存在，创建新设备
 		device = models.Device{
-			Name:      fmt.Sprintf("设备_%s", msgID),
-			Topic:     fmt.Sprintf("device/%s", msgID),
+			Name:      fmt.Sprintf("设备_%s", deviceIDUint),
+			Topic:     fmt.Sprintf("device/%s", deviceIDUint),
 			UserID:    1, // 默认用户ID
 			Longitude: contentData.Longitude,
 			Latitude:  contentData.Latitude,
 			Status:    "online",
 			LastSeen:  time.Now().Unix(),
 		}
+		device.ID = uint(deviceIDUint)
+		device.CreatedAt = time.Now()
+		device.UpdatedAt = time.Now()
 		if err := database.DB.Create(&device).Error; err != nil {
 			fmt.Printf("Failed to create device: %v\n", err)
 			return
@@ -423,6 +430,7 @@ func createZyDataAlert(msgID string, contentData *ContentData, rawContent string
 		fmt.Printf("Created new device: %s (ID: %d)\n", device.Name, device.ID)
 	} else {
 		// 设备存在，更新坐标和时间
+		device.UpdatedAt = time.Now()
 		device.Longitude = contentData.Longitude
 		device.Latitude = contentData.Latitude
 		device.Status = "online"
@@ -434,11 +442,19 @@ func createZyDataAlert(msgID string, contentData *ContentData, rawContent string
 		fmt.Printf("Updated device: %s (ID: %d)\n", device.Name, device.ID)
 	}
 
+	// Marshal ZyForwardData struct to JSON string for the Message field
+	messageJSON, err := json.Marshal(data)
+	if err != nil {
+		fmt.Printf("Failed to marshal ZyForwardData to JSON: %v\n", err)
+		// Handle error, perhaps set a default message or return
+		return
+	}
+
 	alert := models.Alert{
 		DeviceID:  uint(deviceIDUint),
 		Type:      "99",
-		Message:   msgID,
-		Level:     "warning",
+		Message:   string(messageJSON), // Assign the JSON string here
+		Level:     "low",
 		Read:      false,
 		Timestamp: time.Now().Unix(),
 		RawData:   rawContent,
