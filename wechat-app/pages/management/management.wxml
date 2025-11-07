@@ -146,17 +146,6 @@
             </view>
           </view>
 
-          <view class="form-group">
-            <label class="form-label">详细地址</label>
-            <textarea
-              class="form-textarea"
-              name="address"
-              value="{{newDevice.address}}"
-              placeholder="请输入详细地址"
-              maxlength="200"
-            ></textarea>
-          </view>
-
           <view class="form-actions">
             <button class="cancel-btn" bindtap="closeAddDialog" type="button">取消</button>
             <button class="confirm-btn" formType="submit" disabled="{{!newDevice.name || !newDevice.topic}}">
@@ -240,17 +229,6 @@
                 step="0.000001"
               />
             </view>
-          </view>
-
-          <view class="form-group">
-            <label class="form-label">详细地址</label>
-            <textarea
-              class="form-textarea"
-              name="address"
-              value="{{editingDevice.address}}"
-              placeholder="请输入详细地址"
-              maxlength="200"
-            ></textarea>
           </view>
 
           <view class="form-actions">
