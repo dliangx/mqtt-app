@@ -280,7 +280,7 @@ export default function DevicesPage() {
 
   const formatDateTime = (timestamp: number) => {
     if (!timestamp) return '未知';
-    return new Date(timestamp).toLocaleString();
+    return new Date(timestamp * 1000).toLocaleString('zh-CN');
   };
 
   const handleChangePage = (_: unknown, newPage: number) => {
