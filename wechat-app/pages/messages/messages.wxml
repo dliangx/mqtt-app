@@ -115,7 +115,7 @@
 
       <view class="modal-actions">
         <button class="action-btn secondary" bindtap="closeDetailModal">关闭</button>
-        <button wx:if="{{!selectedAlert.read}}" class="action-btn primary" bindtap="markAsRead" data-id="{{selectedAlert.id}}">
+        <button wx:if="{{!selectedAlert.read}}" class="action-btn primary" bindtap="markAsRead" data-id="{{selectedAlert.ID}}">
           标记为已读
         </button>
       </view>

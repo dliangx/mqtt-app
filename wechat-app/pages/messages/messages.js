@@ -212,7 +212,7 @@ Page({
 
   // 标记为已读
   async markAsRead(e) {
-    const alertId = e.currentTarget.dataset.id;
+    const alertId = this.data.selectedAlert?.ID;
 
     this.setData({ loading: true });
     try {
@@ -223,7 +223,7 @@ Page({
 
       // 更新本地数据
       const alerts = this.data.alerts.map((alert) =>
-        alert.id === alertId ? { ...alert, read: true } : alert,
+        alert.ID === alertId ? { ...alert, read: true } : alert,
       );
 
       this.setData({ alerts });
@@ -231,13 +231,13 @@ Page({
       this.filterDisplayAlerts();
 
       // 如果当前在详情模态框中，也更新选中消息
-      if (this.data.selectedAlert && this.data.selectedAlert.id === alertId) {
+      if (this.data.selectedAlert && this.data.selectedAlert.ID === alertId) {
         this.setData({
           "selectedAlert.read": true,
         });
       }
 
-      this.showSuccess("消息已标记为已读");
+      this.showSuccess("已标记为已读");
     } catch (error) {
       this.showError("标记失败: " + error.message);
     } finally {
