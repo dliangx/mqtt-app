@@ -281,7 +281,10 @@ export default function AlertsPage() {
                   <Typography variant="subtitle2" color="text.secondary">
                     消息内容
                   </Typography>
-                  <Typography variant="body1" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ mt: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                  >
                     {selectedAlert.message}
                   </Typography>
                 </Box>
