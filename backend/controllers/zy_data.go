@@ -412,8 +412,8 @@ func createZyDataAlert(data ZyForwardData, contentData *ContentData, rawContent 
 	if result.Error != nil {
 		// 设备不存在，创建新设备
 		device = models.Device{
-			Name:      fmt.Sprintf("设备_%s", deviceIDUint),
-			Topic:     fmt.Sprintf("device/%s", deviceIDUint),
+			Name:      fmt.Sprintf("设备_%d", deviceIDUint),
+			Topic:     fmt.Sprintf("device/%d", deviceIDUint),
 			UserID:    1, // 默认用户ID
 			Longitude: contentData.Longitude,
 			Latitude:  contentData.Latitude,
