@@ -106,6 +106,13 @@ Page({
   // 添加设备
   async handleAddDevice(e) {
     const formData = e.detail.value;
+
+    // 表单验证
+    if (!formData.name?.trim() || !formData.topic?.trim()) {
+      this.showError("设备名称和设备主题不能为空");
+      return;
+    }
+
     const deviceData = {
       name: formData.name?.trim(),
       topic: formData.topic?.trim(),
@@ -114,11 +121,6 @@ Page({
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
       address: formData.address?.trim(),
     };
-
-    if (!deviceData.name || !deviceData.topic) {
-      this.showError("设备名称和设备主题不能为空");
-      return;
-    }
 
     this.setData({ loading: true });
     try {
@@ -144,6 +146,13 @@ Page({
   // 编辑设备
   async handleEditDevice(e) {
     const formData = e.detail.value;
+
+    // 表单验证
+    if (!formData.name?.trim() || !formData.topic?.trim()) {
+      this.showError("设备名称和设备主题不能为空");
+      return;
+    }
+
     const deviceData = {
       name: formData.name?.trim(),
       topic: formData.topic?.trim(),
@@ -153,22 +162,17 @@ Page({
       address: formData.address?.trim(),
     };
 
-    if (!deviceData.name || !deviceData.topic) {
-      this.showError("设备名称和设备主题不能为空");
-      return;
-    }
-
     this.setData({ loading: true });
     try {
       const updatedDevice = await request({
-        url: `/devices/${this.data.editingDevice.id}`,
+        url: `/devices/${this.data.editingDevice.ID}`,
         method: "PUT",
         data: deviceData,
       });
 
       // 更新设备列表
       const devices = this.data.devices.map((device) =>
-        device.id === this.data.editingDevice.id ? updatedDevice : device,
+        device.ID === this.data.editingDevice.ID ? updatedDevice : device,
       );
       this.setData({ devices });
 
@@ -184,7 +188,7 @@ Page({
   // 删除设备
   async handleDeleteDevice(e) {
     const deviceId = e.currentTarget.dataset.id;
-    const device = this.data.devices.find((d) => d.id === deviceId);
+    const device = this.data.devices.find((d) => d.ID === deviceId);
 
     wx.showModal({
       title: "确认删除",
@@ -200,7 +204,7 @@ Page({
             });
 
             // 更新设备列表
-            const devices = this.data.devices.filter((d) => d.id !== deviceId);
+            const devices = this.data.devices.filter((d) => d.ID !== deviceId);
             this.setData({ devices });
 
             this.showSuccess("设备删除成功");
@@ -217,7 +221,7 @@ Page({
   // 设备组选择变化
   onGroupChange(e) {
     const index = e.detail.value;
-    const groupId = this.data.deviceGroups[index]?.id || null;
+    const groupId = this.data.deviceGroups[index]?.ID || null;
     this.setData({
       "newDevice.group_id": groupId,
     });
@@ -226,7 +230,7 @@ Page({
   // 编辑设备组选择变化
   onEditGroupChange(e) {
     const index = e.detail.value;
-    const groupId = this.data.deviceGroups[index]?.id || null;
+    const groupId = this.data.deviceGroups[index]?.ID || null;
     this.setData({
       "editingDevice.group_id": groupId,
     });
@@ -243,10 +247,11 @@ Page({
 
   // 显示成功消息
   showSuccess(message) {
-    this.setData({ success: message });
-    setTimeout(() => {
-      this.setData({ success: "" });
-    }, 3000);
+    wx.showToast({
+      title: message,
+      icon: "success",
+      duration: 2000,
+    });
   },
 
   // 清除错误

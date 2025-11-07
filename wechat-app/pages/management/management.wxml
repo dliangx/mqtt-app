@@ -17,7 +17,7 @@
 
     <!-- 设备列表 -->
     <scroll-view class="device-list" scroll-y>
-      <view wx:for="{{devices}}" wx:key="id" class="device-card">
+      <view wx:for="{{devices}}" wx:key="ID" class="device-card">
         <view class="card-content">
           <!-- 设备头部信息 -->
           <view class="device-header">
@@ -56,7 +56,7 @@
             <button class="edit-btn" bindtap="openEditDialog" data-device="{{item}}">
               <text>编辑</text>
             </button>
-            <button class="delete-btn" bindtap="handleDeleteDevice" data-id="{{item.id}}">
+            <button class="delete-btn" bindtap="handleDeleteDevice" data-id="{{item.ID}}">
               <text>删除</text>
             </button>
           </view>
@@ -116,7 +116,7 @@
               bindchange="onGroupChange"
             >
               <view class="picker-value">
-                {{newDevice.group_id ? getGroupName(newDevice.group_id) : '请选择设备组'}}
+                {{newDevice.group_id ? time.getGroupName(newDevice.group_id, deviceGroups) : '请选择设备组'}}
               </view>
             </picker>
           </view>
@@ -148,7 +148,7 @@
 
           <view class="form-actions">
             <button class="cancel-btn" bindtap="closeAddDialog" type="button">取消</button>
-            <button class="confirm-btn" formType="submit" disabled="{{!newDevice.name || !newDevice.topic}}">
+            <button class="confirm-btn" formType="submit">
               <text>添加设备</text>
             </button>
           </view>
@@ -201,7 +201,7 @@
               bindchange="onEditGroupChange"
             >
               <view class="picker-value">
-                {{editingDevice.group_id ? getGroupName(editingDevice.group_id) : '请选择设备组'}}
+                {{editingDevice.group_id ? time.getGroupName(editingDevice.group_id, deviceGroups) : '请选择设备组'}}
               </view>
             </picker>
           </view>
@@ -233,7 +233,7 @@
 
           <view class="form-actions">
             <button class="cancel-btn" bindtap="closeEditDialog" type="button">取消</button>
-            <button class="confirm-btn" formType="submit" disabled="{{!editingDevice.name || !editingDevice.topic}}">
+            <button class="confirm-btn" formType="submit">
               <text>保存修改</text>
             </button>
           </view>

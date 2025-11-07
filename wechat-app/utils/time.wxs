@@ -54,7 +54,7 @@ var getGroupName = function(groupId, deviceGroups) {
   if (!deviceGroups || deviceGroups.length === 0) return "未知分组";
 
   for (var i = 0; i < deviceGroups.length; i++) {
-    if (deviceGroups[i].id === groupId) {
+    if (deviceGroups[i].ID === groupId) {
       return deviceGroups[i].name;
     }
   }

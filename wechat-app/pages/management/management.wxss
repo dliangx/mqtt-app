@@ -51,9 +51,7 @@
 
 /* 内容区域 */
 .content {
-  background: white;
   border-radius: 16rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 }
 
 .device-list {
@@ -68,6 +66,7 @@
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
   border: 2rpx solid #f0f0f0;
   transition: all 0.2s ease;
+  margin-bottom: 20rpx;
 }
 
 .device-card:active {
