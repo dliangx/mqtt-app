@@ -1,4 +1,5 @@
 <!--pages/monitor/monitor.wxml-->
+<wxs src="../../utils/time.wxs" module="time" />
 <view class="monitor-page">
 
   <!-- 地图容器 -->
@@ -35,11 +36,11 @@
             <text class="detail-value">{{selectedDevice.name}}</text>
           </view>
           <view class="detail-row">
-            <text class="detail-label">设备状态:</text>
-            <view class="status-badge {{selectedDevice.status}}">
-              <text>{{getStatusText(selectedDevice.status)}}</text>
-            </view>
+          <text class="detail-label">设备状态:</text>
+          <view class="status-badge {{selectedDevice.status}}">
+            <text>{{time.getStatusText(selectedDevice.status)}}</text>
           </view>
+        </view>
           <view class="detail-row">
             <text class="detail-label">设备主题:</text>
             <text class="detail-value">{{selectedDevice.topic || '未设置'}}</text>

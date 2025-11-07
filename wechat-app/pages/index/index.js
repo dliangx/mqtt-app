@@ -266,16 +266,6 @@ Page({
     }
   },
 
-  // 获取状态文本
-  getStatusText(status) {
-    const statusMap = {
-      online: "在线",
-      offline: "离线",
-      unknown: "未知",
-    };
-    return statusMap[status] || "未知";
-  },
-
   // 获取标记图标
   getMarkerIcon(status) {
     const iconMap = {
@@ -284,25 +274,6 @@ Page({
       unknown: "/images/marker-unknown.png",
     };
     return iconMap[status] || "/images/marker-unknown.png";
-  },
-
-  // 格式化时间戳
-  formatTimestamp(timestamp) {
-    if (!timestamp) return "从未在线";
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 1) return "刚刚";
-    if (diffMins < 60) return `${diffMins}分钟前`;
-    if (diffHours < 24) return `${diffHours}小时前`;
-    if (diffDays < 7) return `${diffDays}天前`;
-
-    return date.toLocaleDateString();
   },
 
   // 阻止事件冒泡

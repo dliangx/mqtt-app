@@ -1,0 +1,68 @@
+// utils/time.wxs
+var formatDateTime = function(timestamp) {
+  if (!timestamp || timestamp === 0) {
+    return '从未在线';
+  }
+
+  // 检查时间戳格式，可能是秒或毫秒
+  var date;
+  if (timestamp > 1000000000000) {
+    // 毫秒时间戳
+    date = getDate(timestamp);
+  } else {
+    // 秒时间戳
+    date = getDate(timestamp * 1000);
+  }
+
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) {
+    return '时间格式错误';
+  }
+
+  var now = getDate();
+  var diffMs = now - date;
+  var diffMins = Math.floor(diffMs / 60000);
+  var diffHours = Math.floor(diffMs / 3600000);
+  var diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) {
+    return '刚刚';
+  } else if (diffMins < 60) {
+    return diffMins + '分钟前';
+  } else if (diffHours < 24) {
+    return diffHours + '小时前';
+  } else if (diffDays < 7) {
+    return diffDays + '天前';
+  } else {
+    return date.getFullYear() + '/' +
+           (date.getMonth() + 1) + '/' +
+           date.getDate();
+  }
+}
+
+var getStatusText = function(status) {
+  var statusMap = {
+    'online': '在线',
+    'offline': '离线',
+    'unknown': '未知'
+  };
+  return statusMap[status] || '未知';
+}
+
+var getGroupName = function(groupId, deviceGroups) {
+  if (!groupId) return "未分组";
+  if (!deviceGroups || deviceGroups.length === 0) return "未知分组";
+
+  for (var i = 0; i < deviceGroups.length; i++) {
+    if (deviceGroups[i].id === groupId) {
+      return deviceGroups[i].name;
+    }
+  }
+  return "未知分组";
+}
+
+module.exports = {
+  formatDateTime: formatDateTime,
+  getStatusText: getStatusText,
+  getGroupName: getGroupName
+}

@@ -5,6 +5,17 @@
     "pages/management/management",
     "pages/login/login"
   ],
+  "networkTimeout": {
+    "request": 10000,
+    "downloadFile": 10000
+  },
+  "debug": true,
+  "requestLegacyDomain": true,
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取当前位置信息"
+    }
+  },
   "window": {
     "navigationBarTextStyle": "black",
     "navigationStyle": "custom",

@@ -102,18 +102,17 @@
 .alerts-list {
   max-height: calc(100vh - 300rpx);
   border-radius: 12rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-  padding: 20rpx;
+  /* box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1); */ /* 移除列表整体阴影，让卡片自带阴影 */
   box-sizing: border-box;
 }
 
 .alert-card {
   background: white;
   border-radius: 12rpx;
-  margin-bottom: 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
   border: 2rpx solid #f0f0f0;
   transition: all 0.2s ease;
+  margin-bottom: 12rpx; /* 添加卡片间距 */
 }
 
 .alert-card:active {
@@ -211,7 +210,9 @@
 .status-text.read {
   color: #4caf50;
 }
-
+.status-text.unread {
+  color: #c62828;
+}
 /* 空状态 */
 .empty-state {
   text-align: center;
@@ -440,25 +441,93 @@
   margin-bottom: 20rpx;
 }
 
-/* 加载状态 */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+
+/* 骨架屏样式 */
+.skeleton-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.loading-spinner {
-  background: white;
-  padding: 40rpx;
-  border-radius: 12rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
-  font-size: 28rpx;
-  color: #666;
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-animation 1.5s infinite;
+  margin-right: 10px;
+}
+
+.skeleton-badge {
+  width: 50px;
+  height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-animation 1.5s infinite;
+  margin-left: auto;
+}
+
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-animation 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-line.medium {
+  width: 80%;
+}
+
+.skeleton-line.long {
+  width: 100%;
+}
+
+.skeleton-line.tiny {
+  width: 40%;
+}
+
+.skeleton-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.skeleton-button {
+  width: 70px;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-animation 1.5s infinite;
+}
+
+@keyframes loading-animation {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 移除全局的加载状态样式 */
+.loading-overlay, .loading-spinner {
+  display: none;
 }

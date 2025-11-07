@@ -1,4 +1,5 @@
 <!--pages/messages/messages.wxml-->
+<wxs src="../../utils/messages.wxs" module="msg" />
 <view class="messages-page">
   <!-- 页面头部 -->
   <view class="page-header">
@@ -23,26 +24,40 @@
 
   <!-- 消息列表 -->
   <scroll-view class="alerts-list" scroll-y>
-    <view wx:for="{{displayAlerts}}" wx:key="id" class="alert-card {{item.read ? 'read' : ''}}" bindtap="showAlertDetail" data-alert="{{item}}">
+    <!-- 骨架屏显示区域 -->
+    <view wx:if="{{loading && displayAlerts.length === 0}}">
+      <view class="skeleton-card" wx:for="{{[1,2,3,4,5]}}" wx:key="*this">
+        <view class="skeleton-header">
+          <view class="skeleton-avatar"></view>
+          <view class="skeleton-line short"></view>
+          <view class="skeleton-badge"></view>
+        </view>
+        <view class="skeleton-line long"></view>
+        <view class="skeleton-line medium"></view>
+        <view class="skeleton-footer">
+          <view class="skeleton-line tiny"></view>
+          <view class="skeleton-button"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 实际消息列表 -->
+    <view wx:if="{{!loading || displayAlerts.length > 0}}" wx:for="{{displayAlerts}}" wx:key="id" class="alert-card {{item.read ? 'read' : ''}}" bindtap="showAlertDetail" data-alert="{{item}}">
       <view class="alert-content">
         <view class="alert-header">
           <view class="device-info">
             <text class="alert-icon">🔔</text>
-            <text class="device-name">{{getDeviceName(item)}}</text>
+            <text class="device-name">{{item.device_id}}</text>
           </view>
-          <view class="severity-badge" style="background-color: {{getSeverityColor(item.level)}}">
-            <text>{{getSeverityText(item.level)}}</text>
+          <view class="severity-badge" style="background-color: {{msg.getSeverityColor(item.level)}}">
+            <text>{{msg.getSeverityText(item.level)}}</text>
           </view>
         </view>
-
         <text class="alert-message">{{item.message}}</text>
-
         <view class="alert-footer">
-          <text class="timestamp">{{formatTimestamp(item.timestamp)}}</text>
+          <text class="timestamp">{{msg.formatTimestamp(item.timestamp)}}</text>
           <view wx:if="{{!item.read}}" class="alert-status">
-            <button class="mark-read-btn" bindtap="markAsRead" data-id="{{item.id}}" catchtap="stopPropagation">
-              <text>标记已读</text>
-            </button>
+            <text class="status-text unread">未读</text>
           </view>
           <view wx:else class="alert-status">
             <text class="status-text read">已读</text>
@@ -70,13 +85,13 @@
           <text class="section-title">基本信息</text>
           <view class="detail-grid">
             <view class="detail-item">
-              <text class="detail-label">设备名称:</text>
-              <text class="detail-value">{{getDeviceName(selectedAlert)}}</text>
+              <text class="detail-label">设备ID:</text>
+              <text class="detail-value">{{selectedAlert.device_id}}</text>
             </view>
             <view class="detail-item">
               <text class="detail-label">严重程度:</text>
-              <view class="severity-badge" style="background-color: {{getSeverityColor(selectedAlert.level)}}">
-                <text>{{getSeverityText(selectedAlert.level)}}</text>
+              <view class="severity-badge" style="background-color: {{msg.getSeverityColor(selectedAlert.level)}}">
+                <text>{{msg.getSeverityText(selectedAlert.level)}}</text>
               </view>
             </view>
             <view class="detail-item">
@@ -85,7 +100,7 @@
             </view>
             <view class="detail-item">
               <text class="detail-label">时间:</text>
-              <text class="detail-value">{{formatTimestamp(selectedAlert.timestamp)}}</text>
+              <text class="detail-value">{{msg.formatTimestamp(selectedAlert.timestamp)}}</text>
             </view>
           </view>
         </view>
@@ -149,10 +164,10 @@
     </view>
   </view>
 
-  <!-- 加载状态 -->
-  <view wx:if="{{loading}}" class="loading-overlay">
+  <!-- 移除全局的加载状态，因为我们现在有骨架屏了 -->
+  <!-- <view wx:if="{{loading}}" class="loading-overlay">
     <view class="loading-spinner">
       <text>加载中...</text>
     </view>
-  </view>
+  </view> -->
 </view>

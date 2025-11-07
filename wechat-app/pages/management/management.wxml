@@ -1,5 +1,7 @@
 <!--pages/management/management.wxml-->
+<wxs src="../../utils/time.wxs" module="time" />
 <view class="management-page">
+
   <!-- 页面头部 -->
   <view class="page-header">
     <text class="title">设备管理</text>
@@ -21,7 +23,7 @@
           <view class="device-header">
             <text class="device-name">{{item.name}}</text>
             <view class="status-badge {{item.status}}">
-              <text>{{getStatusText(item.status)}}</text>
+              <text>{{time.getStatusText(item.status)}}</text>
             </view>
           </view>
 
@@ -33,13 +35,11 @@
             </view>
             <view class="info-row">
               <text class="info-label">设备组:</text>
-              <text class="info-value">{{getGroupName(item.group_id)}}</text>
+              <text class="info-value">{{time.getGroupName(item.group_id, deviceGroups)}}</text>
             </view>
             <view wx:if="{{item.longitude && item.latitude}}" class="info-row">
               <text class="info-label">位置:</text>
-              <text class="info-value">
-                {{item.longitude.toFixed(6)}}, {{item.latitude.toFixed(6)}}
-              </text>
+              <text class="info-value">{{item.longitude}}, {{item.latitude}}</text>
             </view>
             <view wx:if="{{item.address}}" class="info-row">
               <text class="info-label">地址:</text>
@@ -47,7 +47,7 @@
             </view>
             <view class="info-row">
               <text class="info-label">最后在线:</text>
-              <text class="info-value">{{formatDateTime(item.last_seen)}}</text>
+              <text class="info-value">{{item.last_seen !== undefined && item.last_seen !== null ? time.formatDateTime(item.last_seen) : '从未在线'}}</text>
             </view>
           </view>
 

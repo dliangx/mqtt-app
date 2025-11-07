@@ -24,6 +24,7 @@ Page({
 
   onShow() {
     this.checkAuth();
+    this.loadData();
   },
 
   checkAuth() {
@@ -36,6 +37,7 @@ Page({
   },
 
   async loadData() {
+    console.log("loadData: Setting loading to true");
     this.setData({ loading: true });
     try {
       await Promise.all([this.loadAlerts(), this.loadDevices()]);
@@ -46,6 +48,7 @@ Page({
       this.showError("数据加载失败");
     } finally {
       this.setData({ loading: false });
+      console.log("loadData: Setting loading to false");
     }
   },
 
@@ -55,6 +58,7 @@ Page({
         url: "/alerts",
         method: "GET",
       });
+
       this.setData({ alerts });
     } catch (error) {
       throw new Error("消息列表加载失败");
@@ -239,57 +243,6 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
-  },
-
-  // 获取设备名称
-  getDeviceName(alert) {
-    if (alert.device_id === 0) {
-      return "系统消息";
-    }
-
-    const device = this.data.devices.find((d) => d.id === alert.device_id);
-    return device ? device.name : `设备 ${alert.device_id}`;
-  },
-
-  // 获取严重程度颜色
-  getSeverityColor(level) {
-    const colorMap = {
-      critical: "#d32f2f",
-      high: "#f57c00",
-      medium: "#fbc02d",
-      low: "#388e3c",
-    };
-    return colorMap[level] || "#666";
-  },
-
-  // 获取严重程度文本
-  getSeverityText(level) {
-    const textMap = {
-      critical: "严重",
-      high: "高",
-      medium: "中",
-      low: "低",
-    };
-    return textMap[level] || "未知";
-  },
-
-  // 格式化时间戳
-  formatTimestamp(timestamp) {
-    if (!timestamp) return "未知时间";
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 1) return "刚刚";
-    if (diffMins < 60) return `${diffMins}分钟前`;
-    if (diffHours < 24) return `${diffHours}小时前`;
-    if (diffDays < 7) return `${diffDays}天前`;
-
-    return date.toLocaleDateString();
   },
 
   // 显示错误消息
