@@ -1,6 +1,6 @@
 // utils/api.js
-// const API_BASE_URL = "https://stariot.site/api";
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = "https://stariot.site/api";
+// const API_BASE_URL = "http://localhost:8080/api";
 // 请求拦截器 - 添加token
 const request = (options) => {
   return new Promise((resolve, reject) => {
