@@ -1,5 +1,6 @@
 // pages/messages/messages.js
 const { request } = require("../../utils/api.js");
+const { checkAuth } = require("../../utils/util.js");
 
 Page({
   data: {
@@ -24,22 +25,13 @@ Page({
   },
 
   onLoad() {
-    this.checkAuth();
+    checkAuth();
     this.loadData();
   },
 
   onShow() {
-    this.checkAuth();
+    checkAuth();
     this.loadData();
-  },
-
-  checkAuth() {
-    const token = wx.getStorageSync("token");
-    if (!token) {
-      wx.redirectTo({
-        url: "/pages/login/login",
-      });
-    }
   },
 
   async loadData() {

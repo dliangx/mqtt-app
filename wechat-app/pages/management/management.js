@@ -1,5 +1,6 @@
 // pages/management/management.js
 const { request } = require("../../utils/api.js");
+const { checkAuth } = require("../../utils/util.js");
 
 Page({
   data: {
@@ -28,10 +29,12 @@ Page({
   },
 
   onLoad() {
+    checkAuth();
     this.loadData();
   },
 
   onShow() {
+    checkAuth;
     this.loadData();
   },
 
