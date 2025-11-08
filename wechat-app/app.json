@@ -16,6 +16,7 @@
       "desc": "用于获取当前位置信息"
     }
   },
+  "requiredPrivateInfos": ["getLocation"],
   "window": {
     "navigationBarTextStyle": "black",
     "navigationStyle": "custom",
