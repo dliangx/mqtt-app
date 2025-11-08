@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -50,6 +51,64 @@ func CreateDevice(c *gin.Context) {
 func GetDevices(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
+	// 获取分页参数
+	page := c.DefaultQuery("page", "0")
+	pageSize := c.DefaultQuery("page_size", "0")
+
+	var pageNum, pageSizeNum int
+
+	// 如果提供了分页参数，进行分页查询
+	if page != "0" || pageSize != "0" {
+		// 解析页码
+		if page != "0" {
+			if p, err := strconv.Atoi(page); err == nil && p > 0 {
+				pageNum = p
+			} else {
+				pageNum = 1
+			}
+		} else {
+			pageNum = 1
+		}
+
+		// 解析每页大小
+		if pageSize != "0" {
+			if ps, err := strconv.Atoi(pageSize); err == nil && ps > 0 {
+				pageSizeNum = ps
+			} else {
+				pageSizeNum = 10
+			}
+		} else {
+			pageSizeNum = 10
+		}
+
+		offset := (pageNum - 1) * pageSizeNum
+
+		var devices []models.Device
+		var total int64
+
+		// 获取总数
+		database.DB.Model(&models.Device{}).Where("user_id = ?", userID).Count(&total)
+
+		// 获取分页数据
+		database.DB.Preload("DeviceGroup").
+			Where("user_id = ?", userID).
+			Offset(offset).
+			Limit(pageSizeNum).
+			Find(&devices)
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": devices,
+			"pagination": gin.H{
+				"page":       pageNum,
+				"page_size":  pageSizeNum,
+				"total":      total,
+				"total_page": (total + int64(pageSizeNum) - 1) / int64(pageSizeNum),
+			},
+		})
+		return
+	}
+
+	// 如果没有分页参数，返回全部数据
 	var devices []models.Device
 	database.DB.Preload("DeviceGroup").Where("user_id = ?", userID).Find(&devices)
 

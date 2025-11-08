@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,68 @@ import (
 func GetAlerts(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
+	// 获取分页参数
+	page := c.DefaultQuery("page", "0")
+	pageSize := c.DefaultQuery("page_size", "0")
+
+	var pageNum, pageSizeNum int
+
+	// 如果提供了分页参数，进行分页查询
+	if page != "0" || pageSize != "0" {
+		// 解析页码
+		if page != "0" {
+			if p, err := strconv.Atoi(page); err == nil && p > 0 {
+				pageNum = p
+			} else {
+				pageNum = 1
+			}
+		} else {
+			pageNum = 1
+		}
+
+		// 解析每页大小
+		if pageSize != "0" {
+			if ps, err := strconv.Atoi(pageSize); err == nil && ps > 0 {
+				pageSizeNum = ps
+			} else {
+				pageSizeNum = 10
+			}
+		} else {
+			pageSizeNum = 10
+		}
+
+		offset := (pageNum - 1) * pageSizeNum
+
+		var alerts []models.Alert
+		var total int64
+
+		// 获取总数
+		database.DB.Model(&models.Alert{}).
+			Joins("JOIN devices ON devices.id = alerts.device_id").
+			Where("devices.user_id = ?", userID).
+			Count(&total)
+
+		// 获取分页数据
+		database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
+			Where("devices.user_id = ?", userID).
+			Order("alerts.created_at DESC").
+			Offset(offset).
+			Limit(pageSizeNum).
+			Find(&alerts)
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": alerts,
+			"pagination": gin.H{
+				"page":       pageNum,
+				"page_size":  pageSizeNum,
+				"total":      total,
+				"total_page": (total + int64(pageSizeNum) - 1) / int64(pageSizeNum),
+			},
+		})
+		return
+	}
+
+	// 如果没有分页参数，返回全部数据
 	var alerts []models.Alert
 	database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
 		Where("devices.user_id = ?", userID).
