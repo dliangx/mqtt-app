@@ -15,6 +15,12 @@ Page({
     sendMessageSuccess: false,
     sendMessageError: "",
     displayAlerts: [],
+    // 分页相关
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1,
+    hasMore: true,
+    loadingMore: false,
   },
 
   onLoad() {
@@ -52,16 +58,61 @@ Page({
     }
   },
 
-  async loadAlerts() {
+  async loadAlerts(isLoadMore = false) {
+    if (isLoadMore && !this.data.hasMore) {
+      return;
+    }
+
+    if (isLoadMore) {
+      this.setData({ loadingMore: true });
+    } else {
+      this.setData({ loading: true, currentPage: 1, hasMore: true });
+    }
+
     try {
-      const alerts = await request({
-        url: "/alerts",
+      const page = isLoadMore ? this.data.currentPage + 1 : 1;
+      const response = await request({
+        url: `/alerts?page=${page}&page_size=${this.data.pageSize}`,
         method: "GET",
       });
 
-      this.setData({ alerts });
+      // 处理分页响应格式
+      let alerts;
+      let totalPages = 1;
+
+      if (response.pagination) {
+        alerts = response.data || [];
+        totalPages = response.pagination.total_page || 1;
+        const hasMore = page < totalPages;
+
+        if (isLoadMore) {
+          alerts = [...this.data.alerts, ...alerts];
+        }
+
+        this.setData({
+          alerts: alerts,
+          currentPage: page,
+          totalPages: totalPages,
+          hasMore: hasMore,
+        });
+      } else {
+        // 兼容旧格式
+        alerts = response.data || response;
+        this.setData({
+          alerts: alerts,
+          hasMore: false,
+        });
+      }
+
+      this.filterDisplayAlerts();
     } catch (error) {
       throw new Error("消息列表加载失败");
+    } finally {
+      if (isLoadMore) {
+        this.setData({ loadingMore: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 
@@ -221,14 +272,9 @@ Page({
         method: "PUT",
       });
 
-      // 更新本地数据
-      const alerts = this.data.alerts.map((alert) =>
-        alert.ID === alertId ? { ...alert, read: true } : alert,
-      );
-
-      this.setData({ alerts });
+      // 重新加载第一页数据
+      this.loadAlerts(false);
       this.calculateUnreadCount();
-      this.filterDisplayAlerts();
 
       // 如果当前在详情模态框中，也更新选中消息
       if (this.data.selectedAlert && this.data.selectedAlert.ID === alertId) {
@@ -237,7 +283,7 @@ Page({
         });
       }
 
-      this.showSuccess("已标记为已读");
+      this.showSuccess("消息已标记为已读");
     } catch (error) {
       this.showError("标记失败: " + error.message);
     } finally {
@@ -254,13 +300,20 @@ Page({
     });
   },
 
+  // scroll-view 滚动到底部
+  onScrollToLower() {
+    if (this.data.hasMore && !this.data.loadingMore) {
+      this.loadAlerts(true);
+    } else {
+    }
+  },
+
   // 显示成功消息
   showSuccess(message) {
-    wx.showToast({
-      title: message,
-      icon: "success",
-      duration: 2000,
-    });
+    this.setData({ success: message });
+    setTimeout(() => {
+      this.setData({ success: "" });
+    }, 3000);
   },
 
   // 阻止事件冒泡

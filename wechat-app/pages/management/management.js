@@ -10,7 +10,6 @@ Page({
     editDeviceDialog: false,
     error: "",
     success: "",
-
     newDevice: {
       name: "",
       topic: "",
@@ -20,6 +19,12 @@ Page({
       address: "",
     },
     editingDevice: null,
+    // 分页相关
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1,
+    hasMore: true,
+    loadingMore: false,
   },
 
   onLoad() {
@@ -43,16 +48,59 @@ Page({
   },
 
   // 加载设备列表
-  async loadDevices() {
+  async loadDevices(isLoadMore = false) {
+    if (isLoadMore && !this.data.hasMore) {
+      return;
+    }
+
+    if (isLoadMore) {
+      this.setData({ loadingMore: true });
+    } else {
+      this.setData({ loading: true, currentPage: 1, hasMore: true });
+    }
+
     try {
-      const devices = await request({
-        url: "/devices",
+      const page = isLoadMore ? this.data.currentPage + 1 : 1;
+      const response = await request({
+        url: `/devices?page=${page}&page_size=${this.data.pageSize}`,
         method: "GET",
       });
 
-      this.setData({ devices: devices });
+      // 处理分页响应格式
+      let devices;
+      let totalPages = 1;
+
+      if (response.pagination) {
+        devices = response.data || [];
+        totalPages = response.pagination.total_page || 1;
+        const hasMore = page < totalPages;
+
+        if (isLoadMore) {
+          devices = [...this.data.devices, ...devices];
+        }
+
+        this.setData({
+          devices: devices,
+          currentPage: page,
+          totalPages: totalPages,
+          hasMore: hasMore,
+        });
+      } else {
+        // 兼容旧格式
+        devices = response.data || response;
+        this.setData({
+          devices: devices,
+          hasMore: false,
+        });
+      }
     } catch (error) {
       throw new Error("设备列表加载失败");
+    } finally {
+      if (isLoadMore) {
+        this.setData({ loadingMore: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 
@@ -130,10 +178,8 @@ Page({
         data: deviceData,
       });
 
-      // 更新设备列表
-      const devices = [...this.data.devices, newDevice];
-      this.setData({ devices });
-
+      // 重新加载第一页数据
+      this.loadDevices(false);
       this.showSuccess("设备添加成功");
       this.closeAddDialog();
     } catch (error) {
@@ -203,10 +249,8 @@ Page({
               method: "DELETE",
             });
 
-            // 更新设备列表
-            const devices = this.data.devices.filter((d) => d.ID !== deviceId);
-            this.setData({ devices });
-
+            // 重新加载第一页数据
+            this.loadDevices(false);
             this.showSuccess("设备删除成功");
           } catch (error) {
             this.showError("设备删除失败: " + error.message);
@@ -236,6 +280,14 @@ Page({
     });
   },
 
+  // scroll-view 滚动到底部
+  onScrollToLower() {
+    if (this.data.hasMore && !this.data.loadingMore) {
+      this.loadDevices(true);
+    } else {
+    }
+  },
+
   // 显示错误消息
   showError(message) {
     wx.showToast({
@@ -247,11 +299,10 @@ Page({
 
   // 显示成功消息
   showSuccess(message) {
-    wx.showToast({
-      title: message,
-      icon: "success",
-      duration: 2000,
-    });
+    this.setData({ success: message });
+    setTimeout(() => {
+      this.setData({ success: "" });
+    }, 3000);
   },
 
   // 清除错误

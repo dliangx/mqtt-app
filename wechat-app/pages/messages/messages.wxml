@@ -23,7 +23,7 @@
 
 
   <!-- 消息列表 -->
-  <scroll-view class="alerts-list" scroll-y>
+  <scroll-view class="alerts-list" scroll-y bindscrolltolower="onScrollToLower">
     <!-- 骨架屏显示区域 -->
     <view wx:if="{{loading && displayAlerts.length === 0}}">
       <view class="skeleton-card" wx:for="{{[1,2,3,4,5]}}" wx:key="*this">
@@ -69,6 +69,21 @@
     <view wx:if="{{displayAlerts.length === 0 && !loading}}" class="empty-state">
       <text class="empty-icon">📭</text>
       <text class="empty-text">暂无消息数据</text>
+    </view>
+
+    <!-- 加载更多 -->
+    <view wx:if="{{loadingMore}}" class="load-more">
+      <view class="loading-spinner">
+        <text>加载中...</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!loadingMore && hasMore}}" class="load-more">
+      <text class="load-more-text">上拉加载更多</text>
+    </view>
+
+    <view wx:if="{{!loadingMore && !hasMore && displayAlerts.length > 0}}" class="load-more">
+      <text class="load-more-text">没有更多消息了</text>
     </view>
   </scroll-view>
 

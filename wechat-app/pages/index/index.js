@@ -64,10 +64,13 @@ Page({
 
   async loadDevices() {
     try {
-      const devices = await request({
+      const response = await request({
         url: "/devices",
         method: "GET",
       });
+
+      // 处理分页响应格式
+      const devices = response.data || response;
 
       // 创建地图标记
       const markers = devices
@@ -99,10 +102,13 @@ Page({
 
   async loadAlerts() {
     try {
-      const alerts = await request({
+      const response = await request({
         url: "/alerts",
         method: "GET",
       });
+
+      // 处理分页响应格式
+      const alerts = response.data || response;
 
       // 计算各种统计
       const unreadAlertsCount = alerts.filter((alert) => !alert.read).length;

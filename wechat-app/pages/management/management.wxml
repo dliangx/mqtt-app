@@ -16,7 +16,7 @@
   <view class="content">
 
     <!-- 设备列表 -->
-    <scroll-view class="device-list" scroll-y>
+    <scroll-view class="device-list" scroll-y bindscrolltolower="onScrollToLower">
       <view wx:for="{{devices}}" wx:key="ID" class="device-card">
         <view class="card-content">
           <!-- 设备头部信息 -->
@@ -68,6 +68,21 @@
         <text class="empty-icon">📱</text>
         <text class="empty-text">暂无设备</text>
         <text class="empty-desc">点击上方按钮添加第一个设备</text>
+      </view>
+
+      <!-- 加载更多 -->
+      <view wx:if="{{loadingMore}}" class="load-more">
+        <view class="loading-spinner">
+          <text>加载中...</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!loadingMore && hasMore}}" class="load-more">
+        <text class="load-more-text">上拉加载更多</text>
+      </view>
+
+      <view wx:if="{{!loadingMore && !hasMore && devices.length > 0}}" class="load-more">
+        <text class="load-more-text">没有更多设备了</text>
       </view>
     </scroll-view>
   </view>

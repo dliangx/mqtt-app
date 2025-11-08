@@ -208,6 +208,25 @@
   color: #999;
 }
 
+/* 加载更多 */
+.load-more {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+.load-more-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.load-more .loading-spinner {
+  background: none;
+  box-shadow: none;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
 /* 模态框 */
 .modal-overlay {
   position: fixed;
