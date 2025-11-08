@@ -75,23 +75,16 @@ Page({
       // 创建地图标记
       const markers = devices
         .filter((device) => device.longitude && device.latitude)
-        .map((device) => ({
-          id: device.id,
+        .map((device, index) => ({
+          id: Number(device.id) || index + 1,
           latitude: device.latitude,
           longitude: device.longitude,
           title: device.name,
+          width: 0,
+          height: 0,
           iconPath: this.getMarkerIcon(device.status),
-          width: 30,
-          height: 30,
-          callout: {
-            content: device.name,
-            color: "#333",
-            fontSize: 14,
-            borderRadius: 4,
-            bgColor: "#fff",
-            padding: 8,
-            display: "ALWAYS",
-          },
+          width: 20,
+          height: 20,
         }));
 
       this.setData({ devices, markers });
@@ -254,13 +247,16 @@ Page({
       const trailMarkers = deviceAlerts.map((alert, index) => {
         const data = alert.parsed_data ? JSON.parse(alert.parsed_data) : {};
         return {
-          id: `trail-${index}`,
+          id: 100000 + index,
           latitude: data.latitude || selectedDevice.latitude,
           longitude: data.longitude || selectedDevice.longitude,
           title: `轨迹点 ${index + 1}`,
-          iconPath: "/images/trail-marker.png",
-          width: 20,
-          height: 20,
+          width: 0,
+          height: 0,
+          iconPath:
+            "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNyIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEiLz48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNSIgZmlsbD0iI2ZmOTgwMCIvPjwvc3ZnPg==",
+          width: 16,
+          height: 16,
         };
       });
 
@@ -275,11 +271,45 @@ Page({
   // 获取标记图标
   getMarkerIcon(status) {
     const iconMap = {
-      online: "/images/marker-online.png",
-      offline: "/images/marker-offline.png",
-      unknown: "/images/marker-unknown.png",
+      online:
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSI4IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIvPjxjaXJjbGUgY3g9IjEwIiBjeT0iMTAiIHI9IjYiIGZpbGw9IiM0Y2FmNTAiLz48L3N2Zz4=",
+      offline:
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSI4IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIvPjxjaXJjbGUgY3g9IjEwIiBjeT0iMTAiIHI9IjYiIGZpbGw9IiNmNDQzMzYiLz48L3N2Zz4=",
+      warning:
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSI4IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIvPjxjaXJjbGUgY3g9IjEwIiBjeT0iMTAiIHI9IjYiIGZpbGw9IiNmZjk4MDAiLz48L3N2Zz4=",
     };
-    return iconMap[status] || "/images/marker-unknown.png";
+    return (
+      iconMap[status] ||
+      "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSI4IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIvPjxjaXJjbGUgY3g9IjEwIiBjeT0iMTAiIHI9IjYiIGZpbGw9IiM3NTc1NzUiLz48L3N2Zz4="
+    );
+  },
+
+  // 获取状态颜色
+  getStatusColor(status) {
+    switch (status) {
+      case "online":
+        return "#4caf50";
+      case "offline":
+        return "#f44336";
+      case "warning":
+        return "#ff9800";
+      default:
+        return "#757575";
+    }
+  },
+
+  // 获取状态文本
+  getStatusText(status) {
+    switch (status) {
+      case "online":
+        return "在线";
+      case "offline":
+        return "离线";
+      case "warning":
+        return "警告";
+      default:
+        return status;
+    }
   },
 
   // 阻止事件冒泡

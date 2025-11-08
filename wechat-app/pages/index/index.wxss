@@ -1,4 +1,43 @@
 /* pages/monitor/monitor.wxss */
+
+
+/* 自定义标记点样式 */
+.custom-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 3px solid white;
+}
+
+.custom-marker.online {
+  background-color: #4caf50;
+}
+
+.custom-marker.offline {
+  background-color: #f44336;
+}
+
+.custom-marker.warning {
+  background-color: #ff9800;
+}
+
+.custom-marker.unknown {
+  background-color: #757575;
+}
+
+.marker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: white;
+}
+
+
+
 .monitor-page {
   height: 100vh;
   background-color: white;
