@@ -1,5 +1,7 @@
 // pages/monitor/monitor.js
 const { request } = require("../../utils/api.js");
+// 引入腾讯地图SDK
+const QQMapWX = require("../../libs/qqmap-wx-jssdk.min.js");
 
 Page({
   data: {
@@ -22,6 +24,7 @@ Page({
     highAlertsCount: 0,
     mediumAlertsCount: 0,
     lowAlertsCount: 0,
+    qqmapsdk: null,
   },
 
   onLoad() {
@@ -31,7 +34,15 @@ Page({
     // 初始化地图上下文
     this.setData({
       mapContext: wx.createMapContext("map"),
+      qqmapsdk: new QQMapWX({
+        key: "YOUR_TENCENT_MAP_KEY", // 需要替换为实际的腾讯地图key
+      }),
     });
+
+    // 监听地图初始化完成
+    setTimeout(() => {
+      this.adjustMapViewToShowAllMarkers();
+    }, 1000);
   },
 
   onShow() {
@@ -92,6 +103,13 @@ Page({
         }));
 
       this.setData({ devices, markers });
+
+      // 调整地图视野以显示所有marker
+      if (markers.length > 0) {
+        setTimeout(() => {
+          this.adjustMapViewToShowAllMarkers();
+        }, 500);
+      }
     } catch (error) {
       throw new Error("设备列表加载失败");
     }
@@ -203,7 +221,7 @@ Page({
 
   // 导航到设备
   navigateToDevice() {
-    const { selectedDevice, currentLocation } = this.data;
+    const { selectedDevice, currentLocation, qqmapsdk } = this.data;
 
     if (!selectedDevice.longitude || !selectedDevice.latitude) {
       this.showError("该设备没有位置信息", "error");
@@ -215,43 +233,54 @@ Page({
       return;
     }
 
+    if (!qqmapsdk) {
+      this.showError("地图服务未初始化", "error");
+      return;
+    }
+
     this.setData({ isNavigating: true });
 
-    // 使用微信小程序路线规划API
-    wx.request({
-      url: "https://apis.map.qq.com/ws/direction/v1/driving/",
-      data: {
-        from: `${currentLocation.latitude},${currentLocation.longitude}`,
-        to: `${selectedDevice.latitude},${selectedDevice.longitude}`,
-        key: "YOUR_TENCENT_MAP_KEY", // 需要申请腾讯地图key
-        output: "json",
+    // 使用腾讯地图SDK进行路线规划
+    qqmapsdk.direction({
+      mode: "driving", // 驾车路线规划
+      from: {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      },
+      to: {
+        latitude: selectedDevice.latitude,
+        longitude: selectedDevice.longitude,
       },
       success: (res) => {
+        console.log("路线规划成功:", res);
         if (
-          res.data.status === 0 &&
-          res.data.result &&
-          res.data.result.routes &&
-          res.data.result.routes.length > 0
+          res.status === 0 &&
+          res.result &&
+          res.result.routes &&
+          res.result.routes.length > 0
         ) {
-          const route = res.data.result.routes[0];
+          const route = res.result.routes[0];
+          const coors = route.polyline;
+          const pl = [];
 
-          // 解析路线坐标点
-          const points = [];
-          const polyline = route.polyline;
-          const coords = polyline.split(";");
+          // 坐标解压（返回的点串坐标，通过前向差分进行压缩）
+          const kr = 1000000;
+          for (let i = 2; i < coors.length; i++) {
+            coors[i] = Number(coors[i - 2]) + Number(coors[i]) / kr;
+          }
 
-          coords.forEach((coord) => {
-            const [lng, lat] = coord.split(",");
-            points.push({
-              latitude: parseFloat(lat),
-              longitude: parseFloat(lng),
+          // 将解压后的坐标放入点串数组pl中
+          for (let i = 0; i < coors.length; i += 2) {
+            pl.push({
+              latitude: coors[i],
+              longitude: coors[i + 1],
             });
-          });
+          }
 
           // 绘制路线
           const polylineData = [
             {
-              points: points,
+              points: pl,
               color: "#1976d2",
               width: 6,
               dottedLine: false,
@@ -266,22 +295,24 @@ Page({
 
           // 调整地图视野以显示完整路线
           this.data.mapContext.includePoints({
-            points: points,
+            points: pl,
             padding: [40, 40, 40, 40],
           });
 
           this.showError("路线规划完成，已在地图上显示", "success");
         } else {
-          console.error("路线规划API返回错误:", res.data);
+          console.error("路线规划API返回错误:", res);
           this.showError("无法规划路线", "error");
           this.setData({ isNavigating: false });
         }
       },
       fail: (error) => {
-        console.error("路线规划失败 - 网络错误:", error);
-        console.error("错误详情:", JSON.stringify(error, null, 2));
+        console.error("路线规划失败:", error);
         this.showError("路线规划失败", "error");
         this.setData({ isNavigating: false });
+      },
+      complete: (res) => {
+        console.log("路线规划完成:", res);
       },
     });
   },
@@ -368,6 +399,27 @@ Page({
       default:
         return status;
     }
+  },
+
+  // 调整地图视野以显示所有marker
+  adjustMapViewToShowAllMarkers() {
+    const { markers, mapContext } = this.data;
+
+    if (!markers || markers.length === 0 || !mapContext) {
+      return;
+    }
+
+    // 获取所有marker的坐标点
+    const points = markers.map((marker) => ({
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+    }));
+
+    // 调整地图视野以包含所有marker
+    mapContext.includePoints({
+      points: points,
+      padding: [40, 40, 40, 40], // 上下左右的边距
+    });
   },
 
   // 阻止事件冒泡
