@@ -14,10 +14,9 @@
 
   <!-- 发送消息按钮 -->
   <view class="send-message-section">
-    <button class="send-message-btn" bindtap="openSendMessageDialog">
+    <view class="send-message-btn" bindtap="openSendMessageDialog">
       <text class="send-icon">📢</text>
-      <text>发送重要消息</text>
-    </button>
+    </view>
   </view>
 
 
