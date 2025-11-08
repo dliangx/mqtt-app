@@ -10,6 +10,7 @@
       latitude="{{currentLocation ? currentLocation.latitude : 39.9093}}"
       scale="14"
       markers="{{markers}}"
+      polyline="{{polyline}}"
       bindmarkertap="handleMarkerClick"
       show-location
       style="width: 100%; height: 100%;"

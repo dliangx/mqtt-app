@@ -15,6 +15,8 @@ Page({
     isShowingHistory: false,
     currentLocation: null,
     markers: [],
+    polyline: [],
+    mapContext: null,
     unreadAlertsCount: 0,
     criticalAlertsCount: 0,
     highAlertsCount: 0,
@@ -26,6 +28,10 @@ Page({
     this.checkAuth();
     this.loadData();
     this.getCurrentLocation();
+    // 初始化地图上下文
+    this.setData({
+      mapContext: wx.createMapContext("map"),
+    });
   },
 
   onShow() {
@@ -204,23 +210,77 @@ Page({
       return;
     }
 
+    if (!currentLocation) {
+      this.showError("无法获取当前位置", "error");
+      return;
+    }
+
     this.setData({ isNavigating: true });
 
-    // 使用微信内置地图打开导航
-    wx.openLocation({
-      latitude: selectedDevice.latitude,
-      longitude: selectedDevice.longitude,
-      name: selectedDevice.name,
-      address: selectedDevice.address || "设备位置",
-      scale: 18,
-      success: () => {
-        this.showError("正在导航到设备", "success");
+    // 使用微信小程序路线规划API
+    wx.request({
+      url: "https://apis.map.qq.com/ws/direction/v1/driving/",
+      data: {
+        from: `${currentLocation.latitude},${currentLocation.longitude}`,
+        to: `${selectedDevice.latitude},${selectedDevice.longitude}`,
+        key: "YOUR_TENCENT_MAP_KEY", // 需要申请腾讯地图key
+        output: "json",
+      },
+      success: (res) => {
+        if (
+          res.data.status === 0 &&
+          res.data.result &&
+          res.data.result.routes &&
+          res.data.result.routes.length > 0
+        ) {
+          const route = res.data.result.routes[0];
+
+          // 解析路线坐标点
+          const points = [];
+          const polyline = route.polyline;
+          const coords = polyline.split(";");
+
+          coords.forEach((coord) => {
+            const [lng, lat] = coord.split(",");
+            points.push({
+              latitude: parseFloat(lat),
+              longitude: parseFloat(lng),
+            });
+          });
+
+          // 绘制路线
+          const polylineData = [
+            {
+              points: points,
+              color: "#1976d2",
+              width: 6,
+              dottedLine: false,
+              arrowLine: true,
+            },
+          ];
+
+          this.setData({
+            polyline: polylineData,
+            isNavigating: false,
+          });
+
+          // 调整地图视野以显示完整路线
+          this.data.mapContext.includePoints({
+            points: points,
+            padding: [40, 40, 40, 40],
+          });
+
+          this.showError("路线规划完成，已在地图上显示", "success");
+        } else {
+          console.error("路线规划API返回错误:", res.data);
+          this.showError("无法规划路线", "error");
+          this.setData({ isNavigating: false });
+        }
       },
       fail: (error) => {
-        console.error("导航失败:", error);
-        this.showError("导航失败，请检查位置信息", "error");
-      },
-      complete: () => {
+        console.error("路线规划失败 - 网络错误:", error);
+        console.error("错误详情:", JSON.stringify(error, null, 2));
+        this.showError("路线规划失败", "error");
         this.setData({ isNavigating: false });
       },
     });
