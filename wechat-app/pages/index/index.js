@@ -35,7 +35,7 @@ Page({
     this.setData({
       mapContext: wx.createMapContext("map"),
       qqmapsdk: new QQMapWX({
-        key: "YOUR_TENCENT_MAP_KEY", // 需要替换为实际的腾讯地图key
+        key: "5ZDBZ-2SDC7-FGEXZ-HWLDT-MFATJ-77FU5", // 需要替换为实际的腾讯地图key
       }),
     });
 
@@ -93,7 +93,7 @@ Page({
       const markers = devices
         .filter((device) => device.longitude && device.latitude)
         .map((device, index) => ({
-          id: Number(device.ID || device.id) || index + 1,
+          id: Number(device.ID) || index + 1,
           latitude: device.latitude,
           longitude: device.longitude,
           title: device.name,
@@ -187,17 +187,33 @@ Page({
     console.log("点击的标记ID:", deviceId);
     console.log("设备列表:", this.data.devices);
     const device =
-      this.data.devices.find((d) => d.ID == deviceId || d.id == deviceId) ||
+      this.data.devices.find((d) => d.ID == deviceId) ||
       e.currentTarget.dataset.device;
 
     if (device) {
       console.log("找到设备:", device);
-      // 清除轨迹显示
+      // 清除轨迹显示和轨迹连线
       this.setData({
         selectedDevice: device,
         dialogOpen: true,
         isShowingHistory: false,
+        polyline: [], // 清除轨迹连线
       });
+
+      // 清除轨迹标记（只保留原始设备标记）
+      const originalMarkers = this.data.devices
+        .filter((d) => d.longitude && d.latitude)
+        .map((d, index) => ({
+          id: Number(d.ID) || index + 1,
+          latitude: d.latitude,
+          longitude: d.longitude,
+          title: d.name,
+          width: 20,
+          height: 20,
+          iconPath: this.getMarkerIcon(d.status),
+        }));
+
+      this.setData({ markers: originalMarkers });
     } else {
       console.log("未找到对应设备");
     }
@@ -326,8 +342,7 @@ Page({
 
     // 获取设备的历史报警数据
     const deviceAlerts = this.data.alerts.filter(
-      (alert) =>
-        alert.device_id === selectedDevice.id && alert.type === "track",
+      (alert) => alert.device_id === selectedDevice.ID && alert.type === "99",
     );
 
     if (deviceAlerts.length === 0) {
@@ -335,13 +350,23 @@ Page({
       return;
     }
 
-    // 创建轨迹标记
+    // 创建轨迹标记和收集轨迹点
+    const trailPoints = [];
     const trailMarkers = deviceAlerts.map((alert, index) => {
       const data = alert.parsed_data ? JSON.parse(alert.parsed_data) : {};
+      const latitude = data.latitude || selectedDevice.latitude;
+      const longitude = data.longitude || selectedDevice.longitude;
+
+      // 收集轨迹点用于连线
+      trailPoints.push({
+        latitude: latitude,
+        longitude: longitude,
+      });
+
       return {
         id: 100000 + index,
-        latitude: data.latitude || selectedDevice.latitude,
-        longitude: data.longitude || selectedDevice.longitude,
+        latitude: latitude,
+        longitude: longitude,
         title: `轨迹点 ${index + 1}`,
         width: 16,
         height: 16,
@@ -350,11 +375,35 @@ Page({
       };
     });
 
-    // 更新地图标记
-    const markers = [...this.data.markers, ...trailMarkers];
-    this.setData({ markers });
+    // 创建轨迹连线
+    const trailPolyline = [
+      {
+        points: trailPoints,
+        color: "#ff9800",
+        width: 4,
+        dottedLine: false,
+      },
+    ];
 
-    this.showError(`显示 ${deviceAlerts.length} 个轨迹点`, "success");
+    // 更新地图标记和轨迹线
+    const markers = [...this.data.markers, ...trailMarkers];
+    this.setData({
+      markers,
+      polyline: trailPolyline,
+    });
+
+    // 调整地图视野以显示完整轨迹
+    if (trailPoints.length > 0) {
+      setTimeout(() => {
+        this.data.mapContext.includePoints({
+          points: trailPoints,
+          padding: [40, 40, 40, 40],
+        });
+      }, 300);
+    }
+
+    // 关闭对话框
+    this.handleCloseDialog();
   },
 
   // 获取标记图标
