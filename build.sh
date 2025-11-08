@@ -58,6 +58,14 @@ if ! go build -o ../mqtt-app; then
     echo "Error: Go backend build failed"
     exit 1
 fi
-cd ..
+docker run --rm --platform linux/amd64 \
+  -v "$PWD":/app \
+  -w /app \
+  -e GOPROXY=https://goproxy.cn,direct \
+  -e GOPRIVATE= \
+  golang:latest \
+  go build -o mqtt-app-linux
 
+mv mqtt-app-linux ../mqtt-app-linux
+cd ..
 echo "Build complete! Run ./mqtt-app to start the server."

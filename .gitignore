@@ -1,5 +1,6 @@
 # Go binaries
 mqtt-app
+mqtt-app-linux
 *.exe
 *.exe~
 *.dll
