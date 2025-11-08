@@ -76,15 +76,13 @@ Page({
       const markers = devices
         .filter((device) => device.longitude && device.latitude)
         .map((device, index) => ({
-          id: Number(device.id) || index + 1,
+          id: Number(device.ID || device.id) || index + 1,
           latitude: device.latitude,
           longitude: device.longitude,
           title: device.name,
-          width: 0,
-          height: 0,
-          iconPath: this.getMarkerIcon(device.status),
           width: 20,
           height: 20,
+          iconPath: this.getMarkerIcon(device.status),
         }));
 
       this.setData({ devices, markers });
@@ -160,16 +158,24 @@ Page({
 
   // 处理地图标记点击
   handleMarkerClick(e) {
+    console.log("标记点点击事件:", e);
     const deviceId = e.markerId || e.currentTarget.dataset.device?.id;
+    console.log("点击的标记ID:", deviceId);
+    console.log("设备列表:", this.data.devices);
     const device =
-      this.data.devices.find((d) => d.id === deviceId) ||
+      this.data.devices.find((d) => d.ID == deviceId || d.id == deviceId) ||
       e.currentTarget.dataset.device;
 
     if (device) {
+      console.log("找到设备:", device);
+      // 清除轨迹显示
       this.setData({
         selectedDevice: device,
         dialogOpen: true,
+        isShowingHistory: false,
       });
+    } else {
+      console.log("未找到对应设备");
     }
   },
 
@@ -222,50 +228,42 @@ Page({
 
   // 显示历史轨迹
   showHistoryTrail() {
-    const { selectedDevice, isShowingHistory } = this.data;
+    const { selectedDevice } = this.data;
 
-    if (isShowingHistory) {
-      // 清除轨迹
-      this.setData({ isShowingHistory: false });
-      this.showError("已清除历史轨迹", "info");
-    } else {
-      // 显示轨迹
-      this.setData({ isShowingHistory: true });
+    // 显示轨迹
+    this.setData({ isShowingHistory: true });
 
-      // 获取设备的历史报警数据
-      const deviceAlerts = this.data.alerts.filter(
-        (alert) =>
-          alert.device_id === selectedDevice.id && alert.type === "track",
-      );
+    // 获取设备的历史报警数据
+    const deviceAlerts = this.data.alerts.filter(
+      (alert) =>
+        alert.device_id === selectedDevice.id && alert.type === "track",
+    );
 
-      if (deviceAlerts.length === 0) {
-        this.showError("该设备暂无轨迹数据", "info");
-        return;
-      }
-
-      // 创建轨迹标记
-      const trailMarkers = deviceAlerts.map((alert, index) => {
-        const data = alert.parsed_data ? JSON.parse(alert.parsed_data) : {};
-        return {
-          id: 100000 + index,
-          latitude: data.latitude || selectedDevice.latitude,
-          longitude: data.longitude || selectedDevice.longitude,
-          title: `轨迹点 ${index + 1}`,
-          width: 0,
-          height: 0,
-          iconPath:
-            "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNyIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEiLz48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNSIgZmlsbD0iI2ZmOTgwMCIvPjwvc3ZnPg==",
-          width: 16,
-          height: 16,
-        };
-      });
-
-      // 更新地图标记
-      const markers = [...this.data.markers, ...trailMarkers];
-      this.setData({ markers });
-
-      this.showError(`显示 ${deviceAlerts.length} 个轨迹点`, "success");
+    if (deviceAlerts.length === 0) {
+      this.showError("该设备暂无轨迹数据", "info");
+      return;
     }
+
+    // 创建轨迹标记
+    const trailMarkers = deviceAlerts.map((alert, index) => {
+      const data = alert.parsed_data ? JSON.parse(alert.parsed_data) : {};
+      return {
+        id: 100000 + index,
+        latitude: data.latitude || selectedDevice.latitude,
+        longitude: data.longitude || selectedDevice.longitude,
+        title: `轨迹点 ${index + 1}`,
+        width: 16,
+        height: 16,
+        iconPath:
+          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNyIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEiLz48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iNSIgZmlsbD0iI2ZmOTgwMCIvPjwvc3ZnPg==",
+      };
+    });
+
+    // 更新地图标记
+    const markers = [...this.data.markers, ...trailMarkers];
+    this.setData({ markers });
+
+    this.showError(`显示 ${deviceAlerts.length} 个轨迹点`, "success");
   },
 
   // 获取标记图标

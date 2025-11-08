@@ -26,7 +26,7 @@
     <view class="dialog" catchtap="stopPropagation">
       <view class="dialog-header">
         <text class="dialog-title">设备详情 - {{selectedDevice.name}}</text>
-        <button class="close-btn" bindtap="handleCloseDialog">×</button>
+        <view class="close-btn" bindtap="handleCloseDialog">×</view>
       </view>
 
       <view class="dialog-content">
@@ -47,9 +47,7 @@
           </view>
           <view wx:if="{{selectedDevice.longitude && selectedDevice.latitude}}" class="detail-row">
             <text class="detail-label">位置坐标:</text>
-            <text class="detail-value">
-              {{selectedDevice.longitude.toFixed(6)}}, {{selectedDevice.latitude.toFixed(6)}}
-            </text>
+            <text class="detail-value">{{selectedDevice.longitude}}, {{selectedDevice.latitude}}</text>
           </view>
           <view wx:if="{{selectedDevice.address}}" class="detail-row">
             <text class="detail-label">地址:</text>
@@ -57,13 +55,10 @@
           </view>
           <view wx:if="{{currentLocation}}" class="detail-row">
             <text class="detail-label">当前位置来源:</text>
-            <text class="detail-value">
-              {{currentLocation.source === 'browser' ? '浏览器定位' :
+            <text class="detail-value">{{currentLocation.source === 'browser' ? '浏览器定位' :
                 currentLocation.source === 'ip' ? 'IP定位' :
                 currentLocation.source === 'tauri-geolocation' ? '设备GPS定位' :
-                currentLocation.source}}
-
-            </text>
+                currentLocation.source}}</text>
           </view>
         </view>
 
@@ -80,7 +75,7 @@
             class="action-btn secondary"
             bindtap="showHistoryTrail"
           >
-            <text>{{isShowingHistory ? '清除轨迹' : '查看历史轨迹'}}</text>
+            <text>查看历史轨迹</text>
           </button>
         </view>
       </view>

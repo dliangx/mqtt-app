@@ -273,10 +273,35 @@
 
 .dialog-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 32rpx;
   border-bottom: 2rpx solid #f0f0f0;
+}
+
+.dialog-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 36rpx;
+  color: #999;
+  padding: 0;
+  border-radius: 50%;
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  min-width: 40rpx;
+  min-height: 40rpx;
+  box-sizing: border-box;
 }
 
 .dialog-title {
