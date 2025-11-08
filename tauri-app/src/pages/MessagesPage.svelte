@@ -888,6 +888,13 @@
         font-size: 14px;
         color: #333;
         line-height: 1.4;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-height: 42px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
     /* Modal Styles */

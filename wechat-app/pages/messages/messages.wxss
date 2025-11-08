@@ -187,7 +187,11 @@
   color: #333;
   line-height: 1.4;
   margin-bottom: 16rpx;
-  display: block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-height: 42px;
+  overflow: hidden;
+  display: -webkit-box;
 }
 
 .alert-footer {
