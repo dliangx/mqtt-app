@@ -103,7 +103,7 @@ Page({
           hasMore: false,
         });
       }
-
+      this.calculateUnreadCount();
       this.filterDisplayAlerts();
     } catch (error) {
       throw new Error("消息列表加载失败");
@@ -272,9 +272,14 @@ Page({
         method: "PUT",
       });
 
-      // 重新加载第一页数据
-      this.loadAlerts(false);
+      // 更新本地数据
+      const alerts = this.data.alerts.map((alert) =>
+        alert.ID === alertId ? { ...alert, read: true } : alert,
+      );
+
+      this.setData({ alerts });
       this.calculateUnreadCount();
+      this.filterDisplayAlerts();
 
       // 如果当前在详情模态框中，也更新选中消息
       if (this.data.selectedAlert && this.data.selectedAlert.ID === alertId) {
