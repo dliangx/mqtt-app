@@ -238,8 +238,53 @@
     }
 
     function formatDateTime(timestamp) {
-        if (!timestamp) return "未知";
-        return new Date(timestamp).toLocaleString();
+        if (!timestamp || timestamp === 0) {
+            return "未知时间";
+        }
+
+        // 检查时间戳格式，可能是秒或毫秒
+        let date;
+        if (timestamp > 1000000000000) {
+            // 毫秒时间戳
+            date = new Date(timestamp);
+        } else {
+            // 秒时间戳
+            date = new Date(timestamp * 1000);
+        }
+
+        // 检查日期是否有效
+        if (isNaN(date.getTime())) {
+            return "时间格式错误";
+        }
+
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) {
+            return "刚刚";
+        } else if (diffMins < 60) {
+            return diffMins + "分钟前";
+        } else if (diffHours < 24) {
+            return diffHours + "小时前";
+        } else if (diffDays < 7) {
+            return diffDays + "天前";
+        } else {
+            return (
+                date.getFullYear() +
+                "/" +
+                (date.getMonth() + 1) +
+                "/" +
+                date.getDate() +
+                " " +
+                date.getHours() +
+                ":" +
+                (date.getMinutes() < 10 ? "0" : "") +
+                date.getMinutes()
+            );
+        }
     }
 
     function clearError() {
@@ -717,14 +762,16 @@
 
     .device-info {
         margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .info-label {
         font-size: 12px;
         color: #666;
-        display: block;
-        margin-bottom: 2px;
         font-weight: 500;
+        white-space: nowrap;
     }
 
     .device-info p {
