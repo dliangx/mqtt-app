@@ -31,7 +31,7 @@ Page({
 
   onShow() {
     checkAuth();
-    // this.loadData();
+    this.loadData();
   },
 
   async loadData() {

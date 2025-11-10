@@ -21,7 +21,7 @@ const request = (options) => {
       data: options.data,
       header: header,
       success: (res) => {
-        if (res.statusCode === 401) {
+        if (res.statusCode === 400) {
           // token过期，跳转到登录页
           wx.removeStorageSync("token");
           wx.removeStorageSync("user");

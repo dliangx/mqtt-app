@@ -35,7 +35,7 @@ Page({
 
   onShow() {
     checkAuth;
-    // this.loadData();
+    this.loadData();
   },
 
   // 加载数据
