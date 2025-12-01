@@ -14,9 +14,10 @@ import (
 func GetAlerts(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
-	// 获取分页参数
+	// 获取查询参数
 	page := c.DefaultQuery("page", "0")
 	pageSize := c.DefaultQuery("page_size", "0")
+	typeParam := c.Query("type")
 
 	var pageNum, pageSizeNum int
 
@@ -49,16 +50,29 @@ func GetAlerts(c *gin.Context) {
 		var alerts []models.Alert
 		var total int64
 
-		// 获取总数
-		database.DB.Model(&models.Alert{}).
+		// 构建查询条件
+		query := database.DB.Model(&models.Alert{}).
 			Joins("JOIN devices ON devices.id = alerts.device_id").
-			Where("devices.user_id = ?", userID).
-			Count(&total)
+			Where("devices.user_id = ?", userID)
+
+		// 添加类型过滤条件
+		if typeParam != "" {
+			query = query.Where("alerts.type = ?", typeParam)
+		}
+
+		// 获取总数
+		query.Count(&total)
 
 		// 获取分页数据
-		database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
-			Where("devices.user_id = ?", userID).
-			Order("alerts.created_at DESC").
+		dataQuery := database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
+			Where("devices.user_id = ?", userID)
+
+		// 添加类型过滤条件
+		if typeParam != "" {
+			dataQuery = dataQuery.Where("alerts.type = ?", typeParam)
+		}
+
+		dataQuery.Order("alerts.created_at DESC").
 			Offset(offset).
 			Limit(pageSizeNum).
 			Find(&alerts)
@@ -77,10 +91,15 @@ func GetAlerts(c *gin.Context) {
 
 	// 如果没有分页参数，返回全部数据
 	var alerts []models.Alert
-	database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
-		Where("devices.user_id = ?", userID).
-		Order("alerts.created_at DESC").
-		Find(&alerts)
+	query := database.DB.Joins("JOIN devices ON devices.id = alerts.device_id").
+		Where("devices.user_id = ?", userID)
+
+	// 添加类型过滤条件
+	if typeParam != "" {
+		query = query.Where("alerts.type = ?", typeParam)
+	}
+
+	query.Order("alerts.created_at DESC").Find(&alerts)
 
 	c.JSON(http.StatusOK, alerts)
 }

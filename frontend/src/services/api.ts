@@ -91,7 +91,15 @@ export const apiService = {
     api.put<ApiResponse>(`/devices/${id}/status`, statusData),
 
   // Alerts
-  getAlerts: () => api.get<ApiResponse<Alert[]>>('/alerts').then((response) => response.data),
+  getAlerts: (type?: string) => {
+    const params = new URLSearchParams();
+    if (type) {
+      params.append('type', type);
+    }
+    return api
+      .get<ApiResponse<Alert[]>>(`/alerts?${params.toString()}`)
+      .then((response) => response.data);
+  },
 
   getUnreadAlerts: () =>
     api

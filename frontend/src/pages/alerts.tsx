@@ -75,32 +75,39 @@ export default function AlertsPage() {
       const response = await apiService.getAlerts();
       const allAlerts = Array.isArray(response) ? [...response] : [];
       setAlerts(allAlerts);
-
-      // 过滤出报警类型为99的轨迹消息
-      const trackMessagesData = allAlerts
-        .filter((alert) => alert.type === '99')
-        .map((alert) => {
-          let parsedData = null;
-          try {
-            parsedData = alert.parsed_data ? JSON.parse(alert.parsed_data) : null;
-          } catch {
-            parsedData = null;
-          }
-
-          return {
-            ...alert,
-            device_type: parsedData?.device_type || '未知设备',
-            longitude: parsedData?.longitude,
-            latitude: parsedData?.latitude,
-            snr: parsedData?.snr,
-            temperature: parsedData?.temperature,
-            voltage: parsedData?.voltage,
-          } as TrackMessage;
-        });
-
-      setTrackMessages(trackMessagesData);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
+      throw err;
+    }
+  }, []);
+
+  const fetchTrackMessages = useCallback(async () => {
+    try {
+      const response = await apiService.getAlerts('99');
+      const trackMessagesData = Array.isArray(response) ? [...response] : [];
+
+      const formattedTrackMessages = trackMessagesData.map((alert) => {
+        let parsedData = null;
+        try {
+          parsedData = alert.parsed_data ? JSON.parse(alert.parsed_data) : null;
+        } catch {
+          parsedData = null;
+        }
+
+        return {
+          ...alert,
+          device_type: parsedData?.device_type || '未知设备',
+          longitude: parsedData?.longitude,
+          latitude: parsedData?.latitude,
+          snr: parsedData?.snr,
+          temperature: parsedData?.temperature,
+          voltage: parsedData?.voltage,
+        } as TrackMessage;
+      });
+
+      setTrackMessages(formattedTrackMessages);
+    } catch (err) {
+      console.error('Failed to fetch track messages:', err);
       throw err;
     }
   }, []);
@@ -118,18 +125,26 @@ export default function AlertsPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      await Promise.all([fetchAlerts(), fetchUnreadAlerts()]);
+      await Promise.all([fetchAlerts(), fetchTrackMessages(), fetchUnreadAlerts()]);
     } catch (err) {
       console.error('Failed to fetch alert data:', err);
       enqueueSnackbar('获取消息数据失败', { variant: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [fetchAlerts, fetchUnreadAlerts, enqueueSnackbar]);
+  }, [fetchAlerts, fetchTrackMessages, fetchUnreadAlerts, enqueueSnackbar]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // 当切换标签页时，重新获取对应类型的数据
+  useEffect(() => {
+    if (activeTab === 1) {
+      // 轨迹消息标签页
+      fetchTrackMessages();
+    }
+  }, [activeTab, fetchTrackMessages]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);

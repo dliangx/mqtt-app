@@ -22,7 +22,7 @@ var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err
 
 func Connect() {
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("tcp://localhost:1883")
+	opts.AddBroker("tcp://139.159.201.87:1883")
 	opts.SetClientID("go_mqtt_client")
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.OnConnect = connectHandler
